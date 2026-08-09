@@ -1,0 +1,31 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "opensession",
+	"compatibility_date": "2026-08-09",
+	"main": "./workers/app.ts",
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": { "enabled": true },
+	"upload_source_maps": true,
+	"vars": {
+		"EMAIL_FROM": "techmaleek@gmail.com",
+		"EMAIL_FROM_NAME": "Meridian Dev Summit",
+		"APP_BASE_URL": "http://localhost:5173"
+		// Secrets (set with `wrangler secret put NAME`, or .dev.vars locally):
+		// SESSION_SECRET, BREVO_API_KEY, AIRTABLE_API_KEY, AIRTABLE_BASE_ID, ANTHROPIC_API_KEY
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "opensession-db",
+			"database_id": "REPLACE_AFTER_wrangler_d1_create",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"triggers": {
+		// Job runner: emails, Airtable two-way sync, reminders, digests (outbox pattern; Queues needs paid plan)
+		"crons": ["*/5 * * * *"]
+	},
+	"ai": { "binding": "AI" }
+	// Optional R2 (storage falls back to D1 blobs without it):
+	// "r2_buckets": [{ "binding": "FILES", "bucket_name": "opensession-files" }]
+}

@@ -1,0 +1,9 @@
+# Copy to .dev.vars for local dev. Never commit .dev.vars.
+SESSION_SECRET=change-me-long-random-string
+# Brevo transactional email API key (optional locally; emails log with status "test" without it)
+BREVO_API_KEY=
+# Airtable personal access token with data.records:read/write on the synced base
+AIRTABLE_API_KEY=
+AIRTABLE_BASE_ID=
+# Optional: only needed if Workers AI binding is unavailable
+ANTHROPIC_API_KEY=
