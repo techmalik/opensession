@@ -136,8 +136,12 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
   deterministic greedy packer. Model output is validated against real rooms,
   days, and slots, and anything it misses is back-filled by the packer.
 - fflate is the one added dependency, for the deliverables ZIP export.
-- CNT-09 (title and abstract editing) and CNT-12 (the public content gate)
-  landed in Phase 4. CNT-11 (change history with restore) is still open.
+- CNT-09 (title and abstract editing), CNT-11 (change history with restore,
+  app/lib/revisions.server.ts), and CNT-12 (the public content gate) all
+  landed in Phase 4.
+- Revisions are append-only. The first edit backfills the submitted text as
+  version 1, credited to the speaker; a restore writes the old values back
+  and records itself as a new version.
 
 ## Phase 4 notes (public widgets, mail, integrations)
 
@@ -171,5 +175,8 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
   Communications changes decisions, reminders, digests, and portal mail.
 - Airtable and Accelevents never throw out of the job runner. State and the
   last error live in the settings table and surface in Settings >
-  Integrations. Airtable is unverified against a live base (no credentials
-  in this environment); Accelevents is best effort by design.
+  Integrations. Accelevents is best effort by design.
+- Airtable auth is verified; writes are not. A personal access token must
+  have the base added under Access, not just the scopes: a token with no
+  base authenticates, returns {"bases":[]}, and 403s on everything else.
+  explainAirtableError turns that into instructions in the UI.

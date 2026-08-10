@@ -111,8 +111,25 @@ async function airtableFetch(
     },
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`Airtable ${res.status} on ${path}: ${text.slice(0, 300)}`);
+  if (!res.ok) throw new Error(`Airtable ${res.status} on ${path}: ${explainAirtableError(res.status, text)}`);
   return text ? (JSON.parse(text) as Record<string, unknown>) : {};
+}
+
+/** Airtable's permission errors all read the same and none of them say what to fix.
+ *  The common case by far is a token that authenticates but was never granted access
+ *  to the base, so name that first. */
+export function explainAirtableError(status: number, body: string): string {
+  if (body.includes("INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND") || status === 403) {
+    return (
+      "the token cannot reach this base. In airtable.com/create/tokens, open the token, add the base " +
+      "under Access, and give it data.records:read, data.records:write, schema.bases:read, and " +
+      "schema.bases:write. A token with no base added authenticates but sees nothing."
+    );
+  }
+  if (status === 401) return "the token was rejected. Check AIRTABLE_API_KEY.";
+  if (status === 404) return "no base with that id. Check AIRTABLE_BASE_ID, the part of the URL starting with app.";
+  if (status === 429) return "rate limited. The next scheduled sync will retry.";
+  return body.slice(0, 300);
 }
 
 interface AirtableRecord {
