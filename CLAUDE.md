@@ -143,6 +143,25 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
   version 1, credited to the speaker; a restore writes the old values back
   and records itself as a new version.
 
+## Phase 5 notes (speaker CRM)
+
+- The CRM is organization level and lives at /crm, deliberately outside
+  /admin/:eventId. Area 07 fails outright if the directory is nested inside
+  one event's menu. /contacts, /speaker-crm, and /directory redirect there.
+- Same contacts table as the event speaker roster. What makes it the CRM is
+  that nothing is scoped to an event: eventContacts and sessionParticipants
+  are read as history, never as a filter.
+- app/lib/crm-view.ts is the client-safe half (stages, nav); crm.server.ts
+  holds the queries. Merge-tag previews are rendered in the loader, never in
+  a component: comms.server cannot reach the client bundle.
+- Custom field values live in contacts.custom_json keyed by fieldKey, so
+  adding a field never migrates a table.
+- Merging re-points eventContacts, sessionParticipants, notes, mail, and
+  sessions.submitted_by onto the primary, dropping rows that would collide
+  with the unique indexes, then deletes the loser. Not reversible.
+- Import reuses previewImport/applyImport from speakers.server with eventId
+  0, which means "org database only, no event roster".
+
 ## Phase 4 notes (public widgets, mail, integrations)
 
 - One gate for every public surface: app/lib/public.server.ts. A session is

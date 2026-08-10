@@ -61,6 +61,27 @@ export default [
   // Phase 5 fills this in with the real endpoint reference.
   route("docs/api", "routes/docs.api.tsx"),
 
+  // Speaker CRM: the organization-level contact database. Deliberately outside
+  // /admin/:eventId, because it belongs to the org and not to one event.
+  route("crm", "routes/crm.tsx", [
+    index("routes/crm.dashboard.tsx"),
+    route("contacts", "routes/crm.contacts.tsx"),
+    route("contacts/new", "routes/crm.contact.new.tsx"),
+    route("contacts/export.csv", "routes/crm.export.tsx"),
+    route("contacts/:contactId", "routes/crm.contact.tsx"),
+    route("duplicates", "routes/crm.duplicates.tsx"),
+    route("import", "routes/crm.import.tsx"),
+    route("segments", "routes/crm.segments.tsx"),
+    route("fields", "routes/crm.fields.tsx"),
+    route("email", "routes/crm.email.tsx"),
+    route("pipeline", "routes/crm.pipeline.tsx"),
+    route("pipeline/:prospectId", "routes/crm.prospect.tsx"),
+  ]),
+  // Names an organizer might guess for the same thing.
+  route("contacts", "routes/crm-alias.tsx", { id: "crm-alias-contacts" }),
+  route("speaker-crm", "routes/crm-alias.tsx", { id: "crm-alias-speaker-crm" }),
+  route("directory", "routes/crm-alias.tsx", { id: "crm-alias-directory" }),
+
   // Event list and creation sit outside the event shell: there is no event to
   // switch to yet.
   route("admin", "routes/admin.tsx"),
@@ -115,8 +136,5 @@ export default [
     route("communications", "routes/event.communications.tsx"),
 
     route("embeds", "routes/event.embeds.tsx"),
-
-    // Phase 5 replaces this. It exists now so the nav never dead-ends.
-    route("contacts", "routes/event.soon.tsx", { id: "event-contacts" }),
   ]),
 ] satisfies RouteConfig;

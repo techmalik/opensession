@@ -46,7 +46,6 @@ const NAV_GROUPS: { label: string | null; items: { to: string; label: string; en
   {
     label: null,
     items: [
-      { to: "contacts", label: "Contacts" },
       { to: "portals", label: "Portals" },
       { to: "communications", label: "Communications" },
       { to: "embeds", label: "Embeds" },

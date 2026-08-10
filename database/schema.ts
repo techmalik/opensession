@@ -82,6 +82,100 @@ export const eventContacts = sqliteTable(
   ]
 );
 
+// ---------- Speaker CRM (organization level, above any single event) ----------
+
+// Timestamped internal notes on a contact. Separate from contacts.notes (a single
+// free-text field on the event-level speaker record) because the CRM needs an
+// author and a date per entry.
+export const crmNotes = sqliteTable(
+  "crm_notes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    contactId: integer("contact_id").notNull(),
+    body: text("body").notNull(),
+    authorUserId: integer("author_user_id"),
+    authorName: text("author_name").notNull().default("Unknown"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [index("crm_notes_contact_idx").on(t.contactId)]
+);
+
+// Organizer-defined columns on a contact. Values live in contacts.custom_json,
+// keyed by fieldKey, so adding a field never migrates the contacts table.
+export const crmFields = sqliteTable(
+  "crm_fields",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    fieldKey: text("field_key").notNull(),
+    label: text("label").notNull(),
+    type: text("type", { enum: ["text", "select"] }).notNull().default("text"),
+    optionsJson: text("options_json").notNull().default("[]"),
+    sort: integer("sort").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [uniqueIndex("crm_fields_key_uq").on(t.fieldKey)]
+);
+
+// A saved directory view. "dynamic" re-runs its filters on every open; "curated"
+// holds a fixed member list in crm_segment_members.
+export const crmSegments = sqliteTable("crm_segments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  kind: text("kind", { enum: ["dynamic", "curated"] }).notNull().default("dynamic"),
+  filtersJson: text("filters_json").notNull().default("{}"),
+  createdBy: integer("created_by"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const crmSegmentMembers = sqliteTable(
+  "crm_segment_members",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    segmentId: integer("segment_id").notNull(),
+    contactId: integer("contact_id").notNull(),
+  },
+  (t) => [uniqueIndex("crm_segment_members_uq").on(t.segmentId, t.contactId)]
+);
+
+// Sourcing pipeline. One card per contact per pipeline; stage moves and notes are
+// recorded in crm_prospect_events so the card carries its own history.
+export const crmProspects = sqliteTable(
+  "crm_prospects",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    contactId: integer("contact_id").notNull(),
+    // Target event, optional: a prospect can be sourced before an event exists.
+    eventId: integer("event_id"),
+    stage: text("stage", {
+      enum: ["researching", "identified", "contacted", "interested", "confirmed", "declined"],
+    })
+      .notNull()
+      .default("identified"),
+    score: integer("score"),
+    rationale: text("rationale"),
+    sort: integer("sort").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [uniqueIndex("crm_prospects_contact_uq").on(t.contactId), index("crm_prospects_stage_idx").on(t.stage)]
+);
+
+export const crmProspectEvents = sqliteTable(
+  "crm_prospect_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    prospectId: integer("prospect_id").notNull(),
+    kind: text("kind", { enum: ["stage", "note", "enrolled"] }).notNull(),
+    fromStage: text("from_stage"),
+    toStage: text("to_stage"),
+    body: text("body"),
+    authorUserId: integer("author_user_id"),
+    authorName: text("author_name").notNull().default("Unknown"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [index("crm_prospect_events_idx").on(t.prospectId)]
+);
+
 // ---------- Taxonomy ----------
 export const tracks = sqliteTable("tracks", {
   id: integer("id").primaryKey({ autoIncrement: true }),

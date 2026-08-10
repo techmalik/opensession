@@ -97,9 +97,14 @@ export default function AdminEvents({ loaderData, actionData }: Route.ComponentP
           title="Events"
           description="Every event you run. Open one to manage its program."
           actions={
-            <Link to="/admin/new" className={buttonPrimary}>
-              Create event
-            </Link>
+            <>
+              <Link to="/crm" className={buttonSecondary}>
+                Speaker CRM
+              </Link>
+              <Link to="/admin/new" className={buttonPrimary}>
+                Create event
+              </Link>
+            </>
           }
         />
 
