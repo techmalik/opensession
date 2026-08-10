@@ -4,7 +4,9 @@ Open-source speaker and content management for conferences. Built for the Kill M
 SaaS competition as a replacement for Sessionboard: call for papers, abstract review,
 speaker portal, content collection, agenda building, and public schedule embeds.
 
-Status: scaffold + data model + seed. Feature phases tracked in `prompts/`.
+Status: call for papers, abstract review and evaluations, speaker portal, content
+collection, agenda building, public widgets, mail, and integrations are in. Feature
+phases tracked in `prompts/`.
 
 ## Stack
 
@@ -37,6 +39,25 @@ Seeded logins (also used by the sbek eval harness):
 
 The seeded demo event is Meridian Dev Summit 2027, fully populated. The eval
 harness creates its own event (DevFlow Conf 2027) on top.
+
+## Public widgets
+
+No login, no JavaScript required, readable at 375px:
+
+| Surface | URL |
+|---|---|
+| Sessions list | `/embed/v1/<event-slug>/sessions` |
+| Speakers directory | `/embed/v1/<event-slug>/speakers` |
+| Agenda grid | `/embed/v1/<event-slug>/agenda` |
+| Schedule itinerary | `/embed/v1/<event-slug>/itinerary` |
+| Speaker gallery | `/embed/v1/<event-slug>/gallery` |
+| JSON feed | any of the above with a `.json` suffix |
+| Calendar feed | `/embed/v1/<event-slug>/calendar.ics` |
+
+`/sessions`, `/speakers`, `/agenda`, `/schedule`, and `/gallery` redirect to the
+current event's widgets. Snippets, previews, and the cache-refresh button live under
+Embeds in the admin. A session appears publicly only when it is accepted, scheduled,
+not a draft, and published rather than held.
 
 ## Deploy
 

@@ -136,6 +136,40 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
   deterministic greedy packer. Model output is validated against real rooms,
   days, and slots, and anything it misses is back-filled by the packer.
 - fflate is the one added dependency, for the deliverables ZIP export.
-- Not built yet in this area: session title/abstract editing with change
-  history and restore (CNT-09, CNT-11), and the content approval gate on the
-  public agenda (CNT-12).
+- CNT-09 (title and abstract editing) and CNT-12 (the public content gate)
+  landed in Phase 4. CNT-11 (change history with restore) is still open.
+
+## Phase 4 notes (public widgets, mail, integrations)
+
+- One gate for every public surface: app/lib/public.server.ts. A session is
+  public only when the event is live and the session is non-draft, accepted,
+  scheduled (room plus start plus end), and public_state "published". The
+  widgets, the /agenda page, the JSON feeds, and the .ics all read it, so
+  nothing can leak into one surface while hidden on another.
+- public_state ("published" | "held") is the CNT-12 gate. It is independent
+  of decision status: an accepted, scheduled session can still be held.
+- Widget routes are static paths (embed/v1/:eventSlug/sessions and friends),
+  never a :widget param, so the .json and .ics siblings always outrank them.
+- Client-safe view types live in app/lib/embed-view.ts; public.server.ts
+  imports and re-exports them. Widget components must not touch .server code.
+- No client JavaScript in any widget: search and filters are GET forms, Show
+  more is <details>, the personal itinerary is a cookie
+  (app/lib/itinerary.server.ts), detail views are ?session= URLs with a real
+  Back link. The eval agent may run with JS quirks; this cannot break.
+- Cache policy, publicCacheHeaders: versioned URLs (?v=embed_cache_version,
+  what a pasted snippet requests) get max-age 3600; the canonical URL gets
+  no-cache. A 60 second cache was measurably serving held sessions after the
+  organizer held them.
+- The public agenda never 404s for a live event. agenda_published_at is a
+  signal to the organizer, not a gate for visitors.
+- Job scheduling is idempotent by payload: ensureScheduledJobs (reminders per
+  form offset, one digest per event per ISO week) and ensureIntegrationJobs
+  (hourly, keyed on the UTC hour). The runner calls both every tick.
+- Trigger the cron locally with
+  curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=*/5+*+*+*+*".
+- Templates are read through getTemplate everywhere, so editing one in
+  Communications changes decisions, reminders, digests, and portal mail.
+- Airtable and Accelevents never throw out of the job runner. State and the
+  last error live in the settings table and surface in Settings >
+  Integrations. Airtable is unverified against a live base (no credentials
+  in this environment); Accelevents is best effort by design.
