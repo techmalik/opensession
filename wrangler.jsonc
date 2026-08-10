@@ -9,7 +9,7 @@
 	"vars": {
 		"EMAIL_FROM": "techmaleek@gmail.com",
 		"EMAIL_FROM_NAME": "Meridian Dev Summit",
-		"APP_BASE_URL": "http://localhost:5173"
+		"APP_BASE_URL": "https://opensession.opensession.workers.dev"
 		// Secrets (set with `wrangler secret put NAME`, or .dev.vars locally):
 		// SESSION_SECRET, BREVO_API_KEY, AIRTABLE_API_KEY, AIRTABLE_BASE_ID, ANTHROPIC_API_KEY
 	},
@@ -17,7 +17,7 @@
 		{
 			"binding": "DB",
 			"database_name": "opensession-db",
-			"database_id": "REPLACE_AFTER_wrangler_d1_create",
+			"database_id": "53ecb22a-b806-4a65-9a5b-a03fdb226765",
 			"migrations_dir": "drizzle"
 		}
 	],
