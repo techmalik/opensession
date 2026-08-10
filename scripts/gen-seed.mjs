@@ -98,7 +98,7 @@ const main = async () => {
   }
 
   push(
-    `INSERT INTO events (id,name,slug,tagline,description,location,timezone,starts_at,ends_at,status,created_by,created_at) VALUES (${EV},'Meridian Dev Summit 2027','meridian-dev-summit-2027','Systems, tooling, and the people who run them','A two-day, three-track conference for platform and tooling engineers. This is the pre-seeded demo event; the eval agent creates its own event.','Harbourfront Centre, Toronto','America/Toronto',${ts("2027-06-10T13:00:00Z")},${ts("2027-06-11T23:00:00Z")},'active',5,${NOW});`
+    `INSERT INTO events (id,name,slug,tagline,description,location,timezone,starts_at,ends_at,status,created_by,created_at) VALUES (${EV},'Meridian Dev Summit 2027','meridian-dev-summit-2027','Systems, tooling, and the people who run them','A two-day, three-track conference for platform and tooling engineers.','Harbourfront Centre, Toronto','America/Toronto',${ts("2027-06-10T13:00:00Z")},${ts("2027-06-11T23:00:00Z")},'active',5,${NOW});`
   );
 
   for (const c of contacts) {

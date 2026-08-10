@@ -87,7 +87,7 @@ export default function Signup({ actionData }: Route.ComponentProps) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[420px] flex-col justify-center px-6 py-12">
       <h1 className="text-xl font-semibold tracking-tight text-slate-900">Create an account</h1>
-      <p className="mt-1 text-sm text-slate-500">No email verification. You can start right away.</p>
+      <p className="mt-1 text-sm text-slate-500">Takes less than a minute.</p>
 
       <Form method="post" className="mt-6 space-y-4">
         <ErrorSummary errors={errors} />

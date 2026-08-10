@@ -10,7 +10,8 @@ export default [
 
   // Public destinations the landing page links to. Phases 2, 3, and 5 replace these
   // with the real CFP form, speaker portal, and API docs.
-  route("cfp/:eventSlug", "routes/public.soon.tsx", { id: "public-cfp" }),
+  route("cfp/:eventSlug", "routes/cfp.tsx"),
+  route("cfp/:eventSlug/submit", "routes/public.soon.tsx", { id: "public-cfp-submit" }),
   route("portal", "routes/public.soon.tsx", { id: "public-portal" }),
   route("api-docs", "routes/public.soon.tsx", { id: "public-api-docs" }),
 

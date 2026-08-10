@@ -10,7 +10,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 const PAGES: Record<string, { title: string; note: string }> = {
-  cfp: { title: "Call for papers", note: "The submission form for this event is not open here yet." },
+  cfp: { title: "Start a submission", note: "The submission form is not available yet. Check back soon." },
   portal: { title: "Speaker portal", note: "Speakers will manage their sessions, tasks, and files here." },
   "api-docs": { title: "API", note: "The public API under /api/v1 is documented here." },
 };
