@@ -7,6 +7,7 @@ import type { Route } from "./+types/event.submission";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { getFields, withColumnFallbacks, type FieldDef } from "../lib/cfp.server";
+import { ensureBaseRevision, listRevisions, recordRevision, restoreRevision } from "../lib/revisions.server";
 import { getCriteria, reviewScore, type CriterionDef } from "../lib/evals.server";
 import { formatBytes, formatDateTime, formatScore } from "../lib/format";
 import { ROLE_LABEL } from "../lib/labels";
@@ -197,8 +198,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     .orderBy(desc(fileUploads.createdAt))
     .all();
 
+  const revisions = await listRevisions(sessionId);
+
   return {
     event,
+    revisions: revisions.map((row) => ({
+      id: row.id,
+      version: row.version,
+      title: row.title,
+      abstract: row.abstract,
+      editorName: row.editorName,
+      note: row.note,
+      createdAt: row.createdAt,
+      isCurrent: row.isCurrent,
+    })),
     session: {
       id: session.id,
       friendlyId: session.friendlyId,
@@ -233,7 +246,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const eventId = Number(params.eventId);
   const sessionId = Number(params.sessionId);
   const db = getDb();
@@ -250,7 +263,14 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (!title) return { error: "A session needs a title.", notice: null };
 
     const current = await db
-      .select({ answersJson: sessions.answersJson })
+      .select({
+        answersJson: sessions.answersJson,
+        title: sessions.title,
+        abstract: sessions.abstract,
+        submittedBy: sessions.submittedBy,
+        submittedAt: sessions.submittedAt,
+        createdAt: sessions.createdAt,
+      })
       .from(sessions)
       .where(and(eq(sessions.id, sessionId), eq(sessions.eventId, eventId)))
       .get();
@@ -260,11 +280,35 @@ export async function action({ request, params }: Route.ActionArgs) {
     if ("title" in answers) answers.title = title;
     if ("abstract" in answers) answers.abstract = abstract;
 
+    // CNT-11: the text as submitted becomes version 1 the first time it is edited,
+    // then every save appends a version attributed to whoever is signed in.
+    const submitter = current.submittedBy
+      ? await db
+          .select({ firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email })
+          .from(contacts)
+          .where(eq(contacts.id, current.submittedBy))
+          .get()
+      : null;
+    await ensureBaseRevision(
+      sessionId,
+      current,
+      submitter ? `${submitter.firstName} ${submitter.lastName}`.trim() || submitter.email : "Submitter"
+    );
+
     await db
       .update(sessions)
       .set({ title, abstract: abstract || null, answersJson: JSON.stringify(answers), updatedAt: new Date() })
       .where(and(eq(sessions.id, sessionId), eq(sessions.eventId, eventId)));
-    return { error: null, notice: "Session content saved." };
+
+    await recordRevision(sessionId, { title, abstract: abstract || null }, { id: user.id, name: user.name });
+    return { error: null, notice: "Session content saved. The previous version is in the change history." };
+  }
+
+  if (intent === "restore-revision") {
+    const revisionId = Number(form.get("revisionId") ?? 0);
+    const restored = await restoreRevision(eventId, sessionId, revisionId, { id: user.id, name: user.name });
+    if (!restored) return { error: "That version does not belong to this submission.", notice: null };
+    return { error: null, notice: `Restored version ${restored.version}.` };
   }
 
   // CNT-12: the public content gate. Held sessions stay out of the public agenda,
@@ -345,7 +389,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function SubmissionDetail({ loaderData, actionData, params }: Route.ComponentProps) {
-  const { event, session, fields, answers, statusRows, currentStatus, participants, evaluations, scoreAvg, scoreCount, files } =
+  const { event, session, revisions, fields, answers, statusRows, currentStatus, participants, evaluations, scoreAvg, scoreCount, files } =
     loaderData;
 
   const sessionFields = fields.filter((f) => f.section === "session");
@@ -398,6 +442,46 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
                 Save content
               </button>
             </Form>
+          </Card>
+
+          <Card className="p-4">
+            <h2 className="text-sm font-semibold text-slate-900">Change history</h2>
+            {revisions.length === 0 ? (
+              <p className="mt-2 text-[13px] text-slate-500">
+                No edits yet. Saving the content above starts the history, keeping the version that was submitted.
+              </p>
+            ) : (
+              <ol className="mt-3 divide-y divide-slate-100">
+                {revisions.map((revision) => (
+                  <li key={revision.id} className="flex flex-wrap items-start justify-between gap-2 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-medium text-slate-900">
+                        Version {revision.version}
+                        <span className="ml-2 font-normal text-slate-500">
+                          {revision.note}
+                          {revision.isCurrent ? ", current" : ""}
+                        </span>
+                      </p>
+                      <p className="text-[13px] text-slate-500">
+                        {revision.editorName}, {formatDateTime(revision.createdAt, event.timezone)}
+                      </p>
+                      <p className="mt-0.5 truncate text-[13px] text-slate-900">{revision.title}</p>
+                      {revision.abstract ? (
+                        <p className="mt-0.5 line-clamp-2 text-[13px] text-slate-500">{revision.abstract}</p>
+                      ) : null}
+                    </div>
+                    {revision.isCurrent ? null : (
+                      <Form method="post" className="shrink-0">
+                        <input type="hidden" name="revisionId" value={revision.id} />
+                        <button type="submit" name="intent" value="restore-revision" className={buttonSecondary}>
+                          Restore
+                        </button>
+                      </Form>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
           </Card>
 
           <Card className="p-4">

@@ -231,6 +231,25 @@ export const sessionParticipants = sqliteTable(
   ]
 );
 
+// CNT-11: one row per version of a session's editable content. The row holds the
+// values as they were AFTER that edit, so restoring a row is a plain write-back.
+export const sessionRevisions = sqliteTable(
+  "session_revisions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sessionId: integer("session_id").notNull(),
+    title: text("title").notNull(),
+    abstract: text("abstract"),
+    // Who made the change, kept as a name too so history survives a deleted user.
+    editorUserId: integer("editor_user_id"),
+    editorName: text("editor_name").notNull().default("Unknown"),
+    // "Submitted", "Edited", or "Restored version 3"
+    note: text("note").notNull().default("Edited"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [index("session_revisions_session_idx").on(t.sessionId)]
+);
+
 export const sessionTags = sqliteTable(
   "session_tags",
   {
