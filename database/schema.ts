@@ -210,7 +210,9 @@ export const sessionParticipants = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     sessionId: integer("session_id").notNull(),
     contactId: integer("contact_id").notNull(),
-    role: text("role", { enum: ["speaker", "submitter", "moderator", "chairperson"] }).notNull().default("speaker"),
+    role: text("role", { enum: ["speaker", "co_speaker", "panelist", "submitter", "moderator", "chairperson"] })
+      .notNull()
+      .default("speaker"),
     inviteStatus: text("invite_status", { enum: ["invited", "confirmed", "declined"] }).notNull().default("confirmed"),
     sort: integer("sort").notNull().default(0),
   },
@@ -249,9 +251,25 @@ export const evalCriteria = sqliteTable("eval_criteria", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   planId: integer("plan_id").notNull(),
   label: text("label").notNull(),
+  // numeric = 1..5 rating, select = dropdown (optionsJson), text = free text.
+  // Only numeric criteria count toward the weighted aggregate.
+  kind: text("kind", { enum: ["numeric", "select", "text"] }).notNull().default("numeric"),
+  optionsJson: text("options_json").notNull().default("[]"),
   weight: integer("weight").notNull().default(1),
   sort: integer("sort").notNull().default(0),
 });
+
+// Reviewer pool per plan: membership is scoped to the round, not global.
+export const evalPlanReviewers = sqliteTable(
+  "eval_plan_reviewers",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    planId: integer("plan_id").notNull(),
+    userId: integer("user_id").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [uniqueIndex("eval_plan_reviewers_uq").on(t.planId, t.userId)]
+);
 
 export const evalAssignments = sqliteTable(
   "eval_assignments",
@@ -275,7 +293,8 @@ export const evalScores = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     assignmentId: integer("assignment_id").notNull(),
     criterionId: integer("criterion_id"), // null for stars5 overall score
-    score: integer("score").notNull(),
+    score: integer("score").notNull(), // 0 for select/text criteria; valueText holds the answer
+    valueText: text("value_text"),
     comment: text("comment"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   },

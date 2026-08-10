@@ -8,6 +8,13 @@
       "when": 1786316383381,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786365168363,
+      "tag": "0001_warm_millenium_guard",
+      "breakpoints": true
     }
   ]
 }
