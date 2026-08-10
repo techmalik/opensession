@@ -781,7 +781,7 @@ function AuthCard({
       <h2 className="text-base font-semibold text-slate-900">
         {mode === "signup" ? "Create an account to submit" : "Sign in to submit"}
       </h2>
-      <p className="mt-1 text-sm text-slate-500">No email verification. Your submissions stay editable until the deadline.</p>
+      <p className="mt-1 text-sm text-slate-500">Your submissions stay editable until the deadline.</p>
 
       <Form method="post" className="mt-4 space-y-4">
         <ErrorSummary errors={authErrors} />

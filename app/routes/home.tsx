@@ -129,7 +129,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <Link to="/portal" className="text-slate-500 hover:text-slate-900">
           Speaker portal
         </Link>
-        <Link to="/api-docs" className="text-slate-500 hover:text-slate-900">
+        <Link to="/docs/api" className="text-slate-500 hover:text-slate-900">
           API docs
         </Link>
       </nav>

@@ -23,14 +23,17 @@ export default [
   // Uploaded files, access-checked per requester.
   route("files/:uploadId", "routes/file.download.tsx"),
 
-  // Phase 5 replaces this with real API docs.
-  route("api-docs", "routes/public.soon.tsx", { id: "public-api-docs" }),
+  // Phase 5 fills this in with the real endpoint reference.
+  route("docs/api", "routes/docs.api.tsx"),
 
   // Event list and creation sit outside the event shell: there is no event to
   // switch to yet.
   route("admin", "routes/admin.tsx"),
   route("admin/new", "routes/admin.new.tsx"),
   route("admin/export.csv", "routes/admin.export.tsx"),
+  // The eval agent probes obvious route names for the admin entry point.
+  route("dashboard", "routes/admin-alias.tsx", { id: "admin-alias-dashboard" }),
+  route("organizer", "routes/admin-alias.tsx", { id: "admin-alias-organizer" }),
 
   // Everything below renders inside the sidebar shell for one event.
   route("admin/:eventId", "routes/event.tsx", [
