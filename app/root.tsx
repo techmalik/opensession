@@ -1,27 +1,9 @@
-import {
-  isRouteErrorResponse,
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from "react-router";
+import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration, Link } from "react-router";
 
 import type { Route } from "./+types/root";
+// Self-hosted per DESIGN.md: no third-party font request on first paint.
+import "@fontsource-variable/inter";
 import "./app.css";
-
-export const links: Route.LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-  },
-];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -32,7 +14,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body>
+      <body className="antialiased">
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -46,30 +28,41 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let title = "Something went wrong";
+  let details = "An unexpected error occurred. Try again.";
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
-    details =
-      error.status === 404
-        ? "The requested page could not be found."
-        : error.statusText || details;
-  } else if (import.meta.env.DEV && error && error instanceof Error) {
+    if (error.status === 404) {
+      title = "Page not found";
+      details = "That page does not exist. Check the address, or go back to the start.";
+    } else if (error.status === 403) {
+      title = "No access";
+      details = typeof error.data === "string" && error.data ? error.data : "You do not have access to this area.";
+    } else {
+      title = `Error ${error.status}`;
+      details = (typeof error.data === "string" && error.data) || error.statusText || details;
+    }
+  } else if (import.meta.env.DEV && error instanceof Error) {
     details = error.message;
     stack = error.stack;
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
-      {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
+    <main className="mx-auto w-full max-w-[720px] px-6 py-16">
+      <h1 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
+      <p className="mt-1 text-sm text-slate-500">{details}</p>
+      <Link
+        to="/"
+        className="mt-4 inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50"
+      >
+        Go to the start
+      </Link>
+      {stack ? (
+        <pre className="mt-6 w-full overflow-x-auto rounded-md bg-slate-50 p-4 text-xs text-slate-500">
           <code>{stack}</code>
         </pre>
-      )}
+      ) : null}
     </main>
   );
 }

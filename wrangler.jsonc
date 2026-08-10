@@ -1,7 +1,9 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "opensession",
-	"compatibility_date": "2026-08-09",
+	// Must not exceed the date the installed workerd supports, or `npm run dev` cannot
+	// start the local runtime. Bump this only alongside a wrangler upgrade.
+	"compatibility_date": "2026-08-08",
 	"main": "./workers/app.ts",
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true },

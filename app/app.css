@@ -1,15 +1,31 @@
 @import "tailwindcss" source(".");
 
+/* Design tokens. DESIGN.md is law: flat color only, Tailwind slate neutrals, one
+   accent. Dark mode is deliberately out of scope before submission. */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Accent: darkened from Sessionboard's #45cc93 for AA contrast on white. */
+  --color-accent: #0d9166;
+  --color-accent-hover: #0b7b57;
+
+  /* Fixed status colors. */
+  --color-status-pending: var(--color-slate-400);
+  --color-status-accept-queue: var(--color-sky-600);
+  --color-status-accepted: #0d9166;
+  --color-status-decline-queue: var(--color-amber-600);
+  --color-status-declined: var(--color-rose-600);
 }
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  @apply bg-white text-slate-900;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+}
 
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
-  }
+/* Focus is visible everywhere, always in the accent ring. */
+:focus-visible {
+  @apply outline-none ring-2 ring-accent ring-offset-1;
 }
