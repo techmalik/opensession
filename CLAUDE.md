@@ -79,3 +79,25 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
 - Never break `npm run deploy`. Deploy = wrangler deploy after react-router build.
 - When a spec/*.yaml rubric item is satisfied, note its ID in the commit message.
 - Commit small and often. Do not refactor working features near the deadline.
+
+## Environment notes (learned in Phase 1, keep current)
+
+- Deploy with `npm run deploy` only. Bare `wrangler deploy` ships the stale
+  `build/server/wrangler.json` from the previous build, including old vars.
+- compatibility_date must stay at or below what the installed workerd supports
+  (currently 2026-08-08) or `npm run dev` cannot boot. Deploys are unaffected.
+  Bump it only together with a wrangler upgrade.
+- React Router v8: `meta()` receives `{ loaderData }`, not `{ data }`.
+- Route files whose component code touches a `.server` module fail the client
+  build. Shared constants go in plain lib files (see app/lib/timezones.ts).
+- A route that renders a component cannot return a raw Response from its
+  loader. CSV exports and similar get their own resource route (pattern:
+  app/routes/admin.export.tsx).
+- Auth guards: requireUser redirects to /login?next=..., requireOrganizer
+  returns 403. After login, speakers and evaluators land on "/" until the
+  portal (Phase 3) and reviewer dashboard (Phase 2) exist; update landingFor
+  in app/routes/login.tsx when those ship.
+- The session cookie is Secure: Safari will not store it on http://localhost.
+  Chromium, Playwright, and the deployed https site are fine.
+- Live URL: https://opensession.opensession.workers.dev. Remote D1 is
+  migrated and seeded. Local D1 resets with `npm run db:local`.
