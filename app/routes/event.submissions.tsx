@@ -11,7 +11,17 @@ import { requireOrganizer } from "../lib/session.server";
 import { querySubmissions } from "../lib/submissions.server";
 import { formatDate, formatScore } from "../lib/format";
 import { events, formats, sessions, statuses, tracks } from "../../database/schema";
-import { Card, EmptyState, PageHeader, StatusBadge, buttonPrimary, buttonSecondary, inputClass, selectClass } from "../components/ui";
+import {
+  Card,
+  EmptyState,
+  PageHeader,
+  PublicStateBadge,
+  StatusBadge,
+  buttonPrimary,
+  buttonSecondary,
+  inputClass,
+  selectClass,
+} from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Submissions" }];
@@ -35,6 +45,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     statusKey: url.searchParams.get("status") ?? "",
     trackId: Number(url.searchParams.get("track") ?? 0) || undefined,
     formatId: Number(url.searchParams.get("format") ?? 0) || undefined,
+    publicState: url.searchParams.get("public") ?? "",
     sort: (url.searchParams.get("sort") === "score" ? "score" : "submitted") as "score" | "submitted",
     dir: (url.searchParams.get("dir") === "asc" ? "asc" : "desc") as "asc" | "desc",
   };
@@ -90,6 +101,26 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const ids = form.getAll("ids").map(Number).filter(Number.isInteger);
   if (ids.length === 0) return { error: "Select at least one submission." };
+
+  // CNT-12 bulk gate: hold or publish the selection without touching its status.
+  if (intent === "bulk-hold" || intent === "bulk-publish") {
+    const held = intent === "bulk-hold";
+    const owned = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.eventId, eventId), inArray(sessions.id, ids)))
+      .all();
+    for (const row of owned) {
+      await db
+        .update(sessions)
+        .set({ publicState: held ? "held" : "published", updatedAt: new Date() })
+        .where(eq(sessions.id, row.id));
+    }
+    return {
+      error: null,
+      notice: `${held ? "Held" : "Published"} ${owned.length} ${owned.length === 1 ? "session" : "sessions"}.`,
+    };
+  }
 
   let statusId: number | null = null;
   if (intent === "bulk-accept-queue" || intent === "bulk-decline-queue") {
@@ -245,6 +276,16 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
                 </option>
               ))}
             </select>
+            <select
+              name="public"
+              defaultValue={filters.publicState}
+              aria-label="Filter by public visibility"
+              className={`${selectClass} w-44 flex-none`}
+            >
+              <option value="">Any visibility</option>
+              <option value="published">Published</option>
+              <option value="held">Held from public</option>
+            </select>
             <button type="submit" className={buttonSecondary}>
               Filter
             </button>
@@ -268,7 +309,7 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
         ) : (
           <Form method="post">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px] text-[13px]">
+              <table className="w-full min-w-[980px] text-[13px]">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-slate-500">
                     <th scope="col" className="w-8 px-3 py-2">
@@ -286,6 +327,7 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
                     <th scope="col" className="px-3 py-2 font-medium">Track</th>
                     <th scope="col" className="px-3 py-2 font-medium">Format</th>
                     <th scope="col" className="px-3 py-2 font-medium">Status</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Public</th>
                     <th scope="col" className="px-3 py-2 text-right font-medium">
                       <Link to={sortParams("score")} className="hover:text-slate-900">
                         Score{filters.sort === "score" ? (filters.dir === "desc" ? " v" : " ^") : ""}
@@ -327,6 +369,9 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
                       <td className="px-3">
                         <StatusBadge statusKey={row.statusKey ?? "pending"} label={row.statusLabel ?? "Pending"} />
                       </td>
+                      <td className="px-3">
+                        <PublicStateBadge state={row.publicState} />
+                      </td>
                       <td className="px-3 text-right tabular-nums text-slate-900">
                         {row.scoreAvg != null ? (
                           <>
@@ -362,6 +407,13 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
                 </select>
                 <button type="submit" name="intent" value="bulk-set-status" className={buttonSecondary}>
                   Set status
+                </button>
+                <span className="mx-1 text-slate-300">|</span>
+                <button type="submit" name="intent" value="bulk-hold" className={buttonSecondary}>
+                  Hold from public
+                </button>
+                <button type="submit" name="intent" value="bulk-publish" className={buttonSecondary}>
+                  Publish to public
                 </button>
               </div>
             ) : null}

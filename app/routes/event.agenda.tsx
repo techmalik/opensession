@@ -4,20 +4,21 @@
 
 import { useRef, useState } from "react";
 import { Form, Link, useSearchParams, useSubmit } from "react-router";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Route } from "./+types/event.agenda";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { loadAgenda, notifySchedule, placeSession, placementDefaults, unplaceSession } from "../lib/agenda.server";
 import { slotLabel, slotOffsets, slotTimeValue, AGENDA_START_HOUR, SLOT_MINUTES } from "../lib/agenda-grid";
 import { formatDayLabel, formatTimeOfDay, toZonedDateValue, zonedParts } from "../lib/format";
-import { events } from "../../database/schema";
+import { events, sessions } from "../../database/schema";
 import {
   Card,
   EmptyState,
   ErrorNotice,
   Notice,
   PageHeader,
+  PublicStateBadge,
   buttonGhost,
   buttonPrimary,
   buttonSecondary,
@@ -109,6 +110,20 @@ export async function action({ request, params }: Route.ActionArgs) {
     const sessionId = Number(form.get("sessionId") ?? 0);
     await unplaceSession(eventId, sessionId);
     return { error: null, notice: "Session moved back to the unscheduled list." };
+  }
+
+  // CNT-12: hold a placed session back from every public surface, or let it out
+  // again, without unscheduling it.
+  if (intent === "hold-public" || intent === "publish-public") {
+    const sessionId = Number(form.get("sessionId") ?? 0);
+    await db
+      .update(sessions)
+      .set({ publicState: intent === "hold-public" ? "held" : "published", updatedAt: new Date() })
+      .where(and(eq(sessions.id, sessionId), eq(sessions.eventId, eventId)));
+    return {
+      error: null,
+      notice: intent === "hold-public" ? "Held from public." : "Published to public.",
+    };
   }
 
   if (intent === "publish" || intent === "unpublish") {
@@ -347,6 +362,7 @@ export default function Agenda({ loaderData, actionData, params }: Route.Compone
                     <th scope="col" className="px-3 py-2 font-medium">Session</th>
                     <th scope="col" className="px-3 py-2 font-medium">Track</th>
                     <th scope="col" className="px-3 py-2 font-medium">Speakers</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Public</th>
                     <th scope="col" className="px-3 py-2 text-right font-medium">
                       <span className="sr-only">Actions</span>
                     </th>
@@ -355,7 +371,7 @@ export default function Agenda({ loaderData, actionData, params }: Route.Compone
                 <tbody>
                   {dayScheduled.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-3 py-6 text-slate-500">
+                      <td colSpan={7} className="px-3 py-6 text-slate-500">
                         Nothing scheduled on this day yet.
                       </td>
                     </tr>
@@ -378,7 +394,21 @@ export default function Agenda({ loaderData, actionData, params }: Route.Compone
                           <td className="max-w-[180px] truncate px-3 text-slate-500">
                             {session.speakers.map((speaker) => speaker.name).join(", ")}
                           </td>
+                          <td className="px-3">
+                            <PublicStateBadge state={session.publicState} />
+                          </td>
                           <td className="whitespace-nowrap px-3 text-right">
+                            <Form method="post" className="inline">
+                              <input type="hidden" name="sessionId" value={session.id} />
+                              <button
+                                type="submit"
+                                name="intent"
+                                value={session.publicState === "held" ? "publish-public" : "hold-public"}
+                                className="mr-3 font-medium text-slate-500 hover:text-slate-900"
+                              >
+                                {session.publicState === "held" ? "Publish" : "Hold"}
+                              </button>
+                            </Form>
                             <Link to={hrefWith("place", String(session.id))} className="font-medium text-accent hover:underline">
                               Move
                             </Link>
@@ -448,6 +478,7 @@ export default function Agenda({ loaderData, actionData, params }: Route.Compone
                               <span className="truncate font-medium text-slate-900">{session.title}</span>
                             </span>
                             <span className="block truncate text-slate-500">
+                              {session.publicState === "held" ? "Held from public, " : ""}
                               {session.speakers.map((speaker) => speaker.name).join(", ")}
                             </span>
                             <Link

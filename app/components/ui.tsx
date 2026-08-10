@@ -3,6 +3,7 @@
 
 import type { ReactNode } from "react";
 import { Form, Link } from "react-router";
+import { PUBLIC_STATE_LABEL, type PublicState } from "../lib/labels";
 
 export const buttonPrimary =
   "inline-flex h-9 items-center justify-center rounded-md bg-accent px-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50";
@@ -213,6 +214,19 @@ export function ApprovalBadge({ approval }: { approval: "pending" | "approved" |
     <span className="inline-flex items-center gap-1.5 text-[13px] text-slate-900">
       <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden="true" />
       {label}
+    </span>
+  );
+}
+
+/** Whether a session is allowed on the public agenda, widgets, and calendar feed. */
+export function PublicStateBadge({ state }: { state: PublicState }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[13px] text-slate-900">
+      <span
+        className={`h-2 w-2 shrink-0 rounded-full ${state === "held" ? "bg-amber-600" : "bg-accent"}`}
+        aria-hidden="true"
+      />
+      {PUBLIC_STATE_LABEL[state]}
     </span>
   );
 }

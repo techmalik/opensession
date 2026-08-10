@@ -16,12 +16,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     statusKey: url.searchParams.get("status") ?? "",
     trackId: Number(url.searchParams.get("track") ?? 0) || undefined,
     formatId: Number(url.searchParams.get("format") ?? 0) || undefined,
+    publicState: url.searchParams.get("public") ?? "",
     sort: url.searchParams.get("sort") === "score" ? "score" : "submitted",
     dir: url.searchParams.get("dir") === "asc" ? "asc" : "desc",
   });
 
   const csv = toCsv(
-    ["id", "title", "speakers", "track", "format", "status", "score_avg", "score_count", "submitted_at", "decision_email_sent_at"],
+    ["id", "title", "speakers", "track", "format", "status", "public_state", "score_avg", "score_count", "submitted_at", "decision_email_sent_at"],
     rows.map((row) => [
       row.friendlyId,
       row.title,
@@ -29,6 +30,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       row.trackName,
       row.formatName,
       row.statusLabel ?? "Pending",
+      row.publicState,
       row.scoreAvg != null ? row.scoreAvg.toFixed(2) : "",
       row.scoreCount,
       row.submittedAt ? row.submittedAt.toISOString() : "",

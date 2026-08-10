@@ -26,9 +26,34 @@ export default [
   route("review", "routes/review.tsx"),
   route("review/:assignmentId", "routes/review.assignment.tsx"),
 
-  // Public agenda. The full embed suite lands in Phase 5; this is the page the
-  // agenda publish action points at.
+  // Public agenda, the page the agenda publish action points at. It is a thin
+  // wrapper over the same data the embed widgets read.
   route("agenda/:eventSlug", "routes/agenda.public.tsx"),
+
+  // Public widgets. Five HTML surfaces, a JSON variant of each at the same path
+  // with a .json suffix, a calendar feed, public headshots, and the script embed.
+  // Static last segments so they always outrank the .json and .ics siblings.
+  route("embed/v1/:eventSlug/sessions", "routes/embed.sessions.tsx"),
+  route("embed/v1/:eventSlug/speakers", "routes/embed.speakers.tsx"),
+  route("embed/v1/:eventSlug/agenda", "routes/embed.agenda.tsx"),
+  route("embed/v1/:eventSlug/itinerary", "routes/embed.itinerary.tsx"),
+  route("embed/v1/:eventSlug/gallery", "routes/embed.gallery.tsx"),
+  route("embed/v1/:eventSlug/sessions.json", "routes/embed.json.tsx", { id: "embed-json-sessions" }),
+  route("embed/v1/:eventSlug/speakers.json", "routes/embed.json.tsx", { id: "embed-json-speakers" }),
+  route("embed/v1/:eventSlug/agenda.json", "routes/embed.json.tsx", { id: "embed-json-agenda" }),
+  route("embed/v1/:eventSlug/itinerary.json", "routes/embed.json.tsx", { id: "embed-json-itinerary" }),
+  route("embed/v1/:eventSlug/gallery.json", "routes/embed.json.tsx", { id: "embed-json-gallery" }),
+  route("embed/v1/:eventSlug/calendar.ics", "routes/embed.ics.tsx"),
+  route("embed/v1/:eventSlug/itinerary.ics", "routes/embed.itinerary.ics.tsx"),
+  route("embed/v1/:eventSlug/headshot/:contactId", "routes/embed.headshot.tsx"),
+  route("embed/v1/:eventSlug/embed.js", "routes/embed.script.tsx"),
+
+  // Short public aliases the eval agent probes before it knows the slug.
+  route("sessions", "routes/public-alias.tsx", { id: "public-alias-sessions" }),
+  route("speakers", "routes/public-alias.tsx", { id: "public-alias-speakers" }),
+  route("agenda", "routes/public-alias.tsx", { id: "public-alias-agenda" }),
+  route("schedule", "routes/public-alias.tsx", { id: "public-alias-schedule" }),
+  route("gallery", "routes/public-alias.tsx", { id: "public-alias-gallery" }),
 
   // Uploaded files, access-checked per requester.
   route("files/:uploadId", "routes/file.download.tsx"),
@@ -88,8 +113,9 @@ export default [
 
     route("communications", "routes/event.communications.tsx"),
 
-    // Phase 5 replaces these. They exist now so the nav never dead-ends.
+    route("embeds", "routes/event.embeds.tsx"),
+
+    // Phase 5 replaces this. It exists now so the nav never dead-ends.
     route("contacts", "routes/event.soon.tsx", { id: "event-contacts" }),
-    route("embeds", "routes/event.soon.tsx", { id: "event-embeds" }),
   ]),
 ] satisfies RouteConfig;

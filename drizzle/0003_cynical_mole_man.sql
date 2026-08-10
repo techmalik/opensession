@@ -1,0 +1,1 @@
+ALTER TABLE `sessions` ADD `public_state` text DEFAULT 'published' NOT NULL;

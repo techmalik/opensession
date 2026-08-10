@@ -187,6 +187,9 @@ export const sessions = sqliteTable(
     abstract: text("abstract"),
     isAbstract: integer("is_abstract", { mode: "boolean" }).notNull().default(true), // true = submission
     isDraft: integer("is_draft", { mode: "boolean" }).notNull().default(false),
+    // Content gate for every public surface. "held" keeps a session off the public
+    // agenda, the five embed widgets, and the iCal feed without changing its status.
+    publicState: text("public_state", { enum: ["published", "held"] }).notNull().default("published"),
     statusId: integer("status_id"),
     formId: integer("form_id"),
     submittedBy: integer("submitted_by"), // contactId

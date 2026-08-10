@@ -37,6 +37,20 @@ export const ASSIST_SOURCE_LABEL: Record<AssistSource, string> = {
   heuristic: "Built-in scheduler",
 };
 
+/** Whether a session is allowed on the public agenda, the embed widgets, and the
+ *  iCal feed. Independent of its decision status: an accepted, scheduled session can
+ *  still be held back. */
+export type PublicState = "published" | "held";
+
+export const PUBLIC_STATE_LABEL: Record<PublicState, string> = {
+  published: "Published",
+  held: "Held from public",
+};
+
+export function isPublicState(value: unknown): value is PublicState {
+  return value === "published" || value === "held";
+}
+
 export type Approval = "pending" | "approved" | "denied";
 
 export const APPROVAL_LABEL: Record<Approval, string> = {

@@ -27,7 +27,19 @@ import {
   tracks,
   users,
 } from "../../database/schema";
-import { ApprovalBadge, Card, PageHeader, StatusBadge, buttonPrimary, buttonSecondary, inputClass, selectClass } from "../components/ui";
+import {
+  ApprovalBadge,
+  Card,
+  Field,
+  PageHeader,
+  PublicStateBadge,
+  StatusBadge,
+  buttonPrimary,
+  buttonSecondary,
+  inputClass,
+  selectClass,
+  textareaClass,
+} from "../components/ui";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: loaderData?.session ? `${loaderData.session.friendlyId} ${loaderData.session.title}` : "Submission" }];
@@ -191,6 +203,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       id: session.id,
       friendlyId: session.friendlyId,
       title: session.title,
+      abstract: session.abstract ?? "",
+      publicState: session.publicState,
+      isScheduled: session.startsAt != null && session.roomId != null,
       isAbstract: session.isAbstract,
       submittedAt: session.submittedAt,
       updatedAt: session.updatedAt,
@@ -225,6 +240,48 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
+
+  // CNT-09: organizers edit the session title and abstract here. The answers blob
+  // keeps its own copies of both, so both are rewritten together and the speaker
+  // portal, the submissions table, and the public widgets all read the new text.
+  if (intent === "edit-content") {
+    const title = String(form.get("title") ?? "").trim();
+    const abstract = String(form.get("abstract") ?? "").trim();
+    if (!title) return { error: "A session needs a title.", notice: null };
+
+    const current = await db
+      .select({ answersJson: sessions.answersJson })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.eventId, eventId)))
+      .get();
+    if (!current) throw new Response("Submission not found", { status: 404 });
+
+    const answers = parseAnswers(current.answersJson);
+    if ("title" in answers) answers.title = title;
+    if ("abstract" in answers) answers.abstract = abstract;
+
+    await db
+      .update(sessions)
+      .set({ title, abstract: abstract || null, answersJson: JSON.stringify(answers), updatedAt: new Date() })
+      .where(and(eq(sessions.id, sessionId), eq(sessions.eventId, eventId)));
+    return { error: null, notice: "Session content saved." };
+  }
+
+  // CNT-12: the public content gate. Held sessions stay out of the public agenda,
+  // all five embed widgets, and the calendar feed, whatever their decision status.
+  if (intent === "hold-public" || intent === "publish-public") {
+    await db
+      .update(sessions)
+      .set({ publicState: intent === "hold-public" ? "held" : "published", updatedAt: new Date() })
+      .where(and(eq(sessions.id, sessionId), eq(sessions.eventId, eventId)));
+    return {
+      error: null,
+      notice:
+        intent === "hold-public"
+          ? "Held from public. This session is off the public agenda, the widgets, and the calendar feed."
+          : "Published. This session appears on the public agenda, the widgets, and the calendar feed.",
+    };
+  }
 
   // Speaker list edits live here because the agenda's conflict engine keys off them:
   // a co-speaker added late is exactly what causes a double-booking.
@@ -324,6 +381,25 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
+          <Card className="p-4">
+            <h2 className="text-sm font-semibold text-slate-900">Session content</h2>
+            <p className="mt-0.5 text-[13px] text-slate-500">
+              Edits here are what the speaker portal and the public widgets show.
+            </p>
+            <Form method="post" className="mt-3 space-y-3">
+              <input type="hidden" name="intent" value="edit-content" />
+              <Field label="Title" name="title" required>
+                <input id="title" name="title" type="text" defaultValue={session.title} className={inputClass} required />
+              </Field>
+              <Field label="Abstract" name="abstract">
+                <textarea id="abstract" name="abstract" rows={6} defaultValue={session.abstract} className={textareaClass} />
+              </Field>
+              <button type="submit" className={buttonPrimary}>
+                Save content
+              </button>
+            </Form>
+          </Card>
+
           <Card className="p-4">
             <h2 className="text-sm font-semibold text-slate-900">Answers</h2>
             <dl className="mt-3 space-y-3">
@@ -427,6 +503,30 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
               </Link>
               .
             </p>
+          </Card>
+
+          <Card className="p-4">
+            <h2 className="text-sm font-semibold text-slate-900">Public visibility</h2>
+            <div className="mt-2">
+              <PublicStateBadge state={session.publicState} />
+            </div>
+            <p className="mt-2 text-[13px] text-slate-500">
+              {session.publicState === "held"
+                ? "Hidden from the public agenda, the embed widgets, and the calendar feed."
+                : session.isScheduled
+                  ? "Visible on the public agenda, the embed widgets, and the calendar feed."
+                  : "Will appear publicly once this session is accepted and scheduled."}
+            </p>
+            <Form method="post" className="mt-3">
+              <button
+                type="submit"
+                name="intent"
+                value={session.publicState === "held" ? "publish-public" : "hold-public"}
+                className={buttonSecondary}
+              >
+                {session.publicState === "held" ? "Publish to public" : "Hold from public"}
+              </button>
+            </Form>
           </Card>
 
           <Card className="p-4">

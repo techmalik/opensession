@@ -6,6 +6,16 @@ import { getUser } from "../lib/session.server";
 import { daysUntil, formatDate, formatDateRange } from "../lib/format";
 import { events, forms } from "../../database/schema";
 
+/** The public widget surfaces, linked from the landing page so a visitor never has
+ *  to guess an embed URL. */
+const PUBLIC_LINKS = [
+  { widget: "agenda", label: "Agenda" },
+  { widget: "sessions", label: "Sessions" },
+  { widget: "speakers", label: "Speakers" },
+  { widget: "itinerary", label: "Itinerary" },
+  { widget: "gallery", label: "Speaker gallery" },
+];
+
 export function meta({ loaderData }: Route.MetaArgs) {
   const name = loaderData?.event?.name;
   return [
@@ -115,6 +125,26 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           </Link>
         </>
       )}
+
+      {event ? (
+        <nav aria-label="Public program" className="mt-8 border-t border-slate-200 pt-6">
+          <h2 className="text-base font-semibold text-slate-900">Programme</h2>
+          <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-base">
+            {PUBLIC_LINKS.map((link) => (
+              <li key={link.widget}>
+                <Link to={`/embed/v1/${event.slug}/${link.widget}`} className="font-medium text-accent hover:underline">
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+            <li>
+              <a href={`/embed/v1/${event.slug}/calendar.ics`} className="text-slate-500 hover:text-slate-900">
+                Calendar feed
+              </a>
+            </li>
+          </ul>
+        </nav>
+      ) : null}
 
       <nav className="mt-10 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-200 pt-6 text-base">
         {user && (user.role === "admin" || user.role === "organizer") ? (

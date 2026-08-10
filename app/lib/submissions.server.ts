@@ -4,6 +4,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "./db.server";
 import { sessionScoreMap } from "./evals.server";
+import type { PublicState } from "./labels";
 import { contacts, formats, sessionParticipants, sessions, statuses, tracks } from "../../database/schema";
 
 export interface SubmissionFilters {
@@ -11,6 +12,7 @@ export interface SubmissionFilters {
   statusKey?: string;
   trackId?: number;
   formatId?: number;
+  publicState?: string;
   sort?: "submitted" | "score";
   dir?: "asc" | "desc";
 }
@@ -20,6 +22,8 @@ export interface SubmissionListRow {
   friendlyId: string;
   title: string;
   isAbstract: boolean;
+  publicState: PublicState;
+  isScheduled: boolean;
   statusId: number | null;
   statusKey: string | null;
   statusLabel: string | null;
@@ -43,6 +47,9 @@ export async function querySubmissions(eventId: number, filters: SubmissionFilte
       friendlyId: sessions.friendlyId,
       title: sessions.title,
       isAbstract: sessions.isAbstract,
+      publicState: sessions.publicState,
+      startsAt: sessions.startsAt,
+      roomId: sessions.roomId,
       statusId: sessions.statusId,
       statusKey: statuses.key,
       statusLabel: statuses.label,
@@ -92,6 +99,8 @@ export async function querySubmissions(eventId: number, filters: SubmissionFilte
     friendlyId: row.friendlyId,
     title: row.title,
     isAbstract: row.isAbstract,
+    publicState: row.publicState,
+    isScheduled: row.startsAt != null && row.roomId != null,
     statusId: row.statusId,
     statusKey: row.statusKey,
     statusLabel: row.statusLabel,
@@ -118,6 +127,7 @@ export async function querySubmissions(eventId: number, filters: SubmissionFilte
   if (filters.statusKey) result = result.filter((row) => row.statusKey === filters.statusKey);
   if (filters.trackId) result = result.filter((row) => row.trackId === filters.trackId);
   if (filters.formatId) result = result.filter((row) => row.formatId === filters.formatId);
+  if (filters.publicState) result = result.filter((row) => row.publicState === filters.publicState);
 
   if (filters.sort === "score") {
     const dir = filters.dir === "asc" ? 1 : -1;

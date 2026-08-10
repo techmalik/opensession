@@ -16,6 +16,15 @@ async function hashPassword(password, saltB64) {
 }
 
 const q = (s) => (s == null ? "NULL" : `'${String(s).replace(/'/g, "''")}'`);
+
+// Seeded headshots: flat initials tiles, no gradients, so the public speaker
+// widgets show real images without shipping photographs of real people.
+const HEADSHOT_BG = ["#0f172a", "#334155", "#0d9166", "#0284c7", "#475569", "#7c3aed", "#b45309", "#be123c"];
+const headshotSvg = (first, last, id) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320" role="img" aria-label="${first} ${last}">` +
+  `<rect width="320" height="320" fill="${HEADSHOT_BG[(id - 1) % HEADSHOT_BG.length]}"/>` +
+  `<text x="160" y="160" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="128" font-weight="600" ` +
+  `text-anchor="middle" dominant-baseline="central">${first[0]}${last[0]}</text></svg>`;
 const ts = (iso) => Math.floor(new Date(iso).getTime() / 1000);
 const NOW = ts("2026-08-09T20:00:00Z");
 
@@ -64,10 +73,12 @@ const statusRows = [
 ];
 
 const sessionsData = [
-  // [title, abstract, track#, format#, level#, status#, submitter contact, isDraft, scheduled?]
+  // [title, abstract, track#, format#, level#, status#, submitter contact, isDraft, scheduled?, held?]
+  // held = public_state "held": accepted and scheduled, but kept off every public
+  // surface. Exactly one seeded session is held so the content gate is provable.
   ["Zero-Downtime Schema Migrations at Scale", "A practical playbook for evolving relational schemas under live traffic, with the three rollback patterns that saved us.", 1, 2, 2, 3, 3, 0, ["2027-06-10T17:00:00Z", 45, 1]],
   ["Caching Strategies That Survive Contact With Users", "CDN, edge KV, and application caches interact in ways nobody plans for. A tour of real invalidation bugs and the rules that prevent them.", 1, 2, 2, 3, 4, 0, ["2027-06-10T18:00:00Z", 30, 2]],
-  ["Observability on a Budget", "What you actually need from tracing and metrics before series B, and what you can skip without regret.", 3, 3, 1, 3, 7, 0, null],
+  ["Observability on a Budget", "What you actually need from tracing and metrics before series B, and what you can skip without regret.", 3, 3, 1, 3, 7, 0, ["2027-06-10T18:00:00Z", 10, 3]],
   ["Hands-On: Building a Deploy Pipeline From Scratch", "A 2-hour workshop building a production-grade pipeline with preview environments, canaries, and automatic rollback.", 3, 4, 2, 3, 8, 0, ["2027-06-11T16:00:00Z", 120, 4]],
   ["Agentic Code Review in CI", "We put an LLM reviewer in front of 400 weekly PRs. Here is what it catches, what it misses, and the guardrails that made it safe.", 2, 2, 3, 2, 5, 0, null],
   ["SBOMs That Developers Do Not Hate", "Automating software bills of materials so security gets evidence and developers get silence.", 2, 3, 2, 1, 5, 0, null],
@@ -77,6 +88,9 @@ const sessionsData = [
   ["Streaming Joins in Production", "Draft notes on windowing tradeoffs.", 1, 2, 3, 1, 3, 1, null],
   ["Edge Functions vs Regional Workers", "A benchmark-driven comparison of cold starts, tail latency, and cost across four providers.", 1, 2, 2, 1, 4, 0, null],
   ["Prompt Injection Defense in Internal Tools", "Threat model and mitigations for LLM features inside admin dashboards.", 2, 2, 3, 1, 5, 0, null],
+  ["Terraform Modules You Can Actually Reuse", "Module boundaries, versioning, and the review checklist that stopped our infrastructure repo from rotting.", 1, 2, 2, 3, 5, 0, ["2027-06-11T17:00:00Z", 30, 1]],
+  ["Evaluating LLM Agents Before They Ship", "Building an offline eval harness for agent workflows: task suites, scoring, and the regressions it caught.", 2, 2, 3, 3, 2, 0, ["2027-06-11T18:00:00Z", 30, 2]],
+  ["Sponsor Roadmap Briefing (embargoed)", "An accepted, scheduled session held back from the public site until the embargo lifts.", 1, 2, 2, 3, 6, 0, ["2027-06-10T19:00:00Z", 30, 3], 1],
 ];
 
 const main = async () => {
@@ -102,8 +116,17 @@ const main = async () => {
   );
 
   for (const c of contacts) {
+    // Aisha (id 5) is deliberately left without a headshot so the public gallery's
+    // missing-photo fallback is visible in the seeded data.
+    const headshotKey = c.id === 5 ? null : `headshot-seed/${c.id}.svg`;
+    if (headshotKey) {
+      const svg = headshotSvg(c.first, c.last, c.id);
+      push(
+        `INSERT INTO blobs (key,data,content_type,size,created_at) VALUES (${q(headshotKey)},X'${Buffer.from(svg, "utf8").toString("hex")}','image/svg+xml',${Buffer.byteLength(svg)},${NOW});`
+      );
+    }
     push(
-      `INSERT INTO contacts (id,email,first_name,last_name,title,company,bio,dietary,tshirt,travel,tags_json,custom_json,created_at,updated_at) VALUES (${c.id},${q(c.email)},${q(c.first)},${q(c.last)},${q(c.title)},${q(c.company)},${q(c.bio)},${q(c.dietary ?? null)},${q(c.tshirt ?? null)},${q(c.travel ?? null)},'[]','{}',${NOW},${NOW});`
+      `INSERT INTO contacts (id,email,first_name,last_name,title,company,bio,headshot_blob_key,dietary,tshirt,travel,tags_json,custom_json,created_at,updated_at) VALUES (${c.id},${q(c.email)},${q(c.first)},${q(c.last)},${q(c.title)},${q(c.company)},${q(c.bio)},${q(headshotKey)},${q(c.dietary ?? null)},${q(c.tshirt ?? null)},${q(c.travel ?? null)},'[]','{}',${NOW},${NOW});`
     );
     push(`INSERT INTO event_contacts (event_id,contact_id,kind,status) VALUES (${EV},${c.id},'speaker',${q(c.status ?? "invited")});`);
   }
@@ -140,12 +163,12 @@ const main = async () => {
   let sid = 0;
   for (const s of sessionsData) {
     sid += 1;
-    const [title, abstract, trackI, formatI, levelI, statusI, submitter, isDraft, sched] = s;
+    const [title, abstract, trackI, formatI, levelI, statusI, submitter, isDraft, sched, held] = s;
     const scheduled = sched
       ? { starts: ts(sched[0]), ends: ts(sched[0]) + sched[1] * 60, room: sched[2] }
       : { starts: null, ends: null, room: null };
     push(
-      `INSERT INTO sessions (id,event_id,friendly_id,title,abstract,is_abstract,is_draft,status_id,form_id,submitted_by,track_id,format_id,level_id,room_id,starts_at,ends_at,answers_json,submitted_at,created_at,updated_at) VALUES (${sid},${EV},'SESS-${1000 + sid}',${q(title)},${q(abstract)},${statusI === 3 ? 0 : 1},${isDraft},${statusI},1,${submitter},${trackI},${formatI},${levelI},${scheduled.room ?? "NULL"},${scheduled.starts ?? "NULL"},${scheduled.ends ?? "NULL"},'{}',${isDraft ? "NULL" : NOW - sid * 3600},${NOW - sid * 7200},${NOW});`
+      `INSERT INTO sessions (id,event_id,friendly_id,title,abstract,is_abstract,is_draft,public_state,status_id,form_id,submitted_by,track_id,format_id,level_id,room_id,starts_at,ends_at,answers_json,submitted_at,created_at,updated_at) VALUES (${sid},${EV},'SESS-${1000 + sid}',${q(title)},${q(abstract)},${statusI === 3 ? 0 : 1},${isDraft},${held ? "'held'" : "'published'"},${statusI},1,${submitter},${trackI},${formatI},${levelI},${scheduled.room ?? "NULL"},${scheduled.starts ?? "NULL"},${scheduled.ends ?? "NULL"},'{}',${isDraft ? "NULL" : NOW - sid * 3600},${NOW - sid * 7200},${NOW});`
     );
     push(`INSERT INTO session_participants (session_id,contact_id,role,invite_status,sort) VALUES (${sid},${submitter},'speaker','confirmed',0);`);
   }
@@ -211,7 +234,9 @@ const main = async () => {
     [1, 1, 3, 1, 1, "request-1-contact-3/slides-v1.pdf", "zero-downtime-migrations.pdf", "application/pdf", PDF_BYTES, "denied", 7, 96],
     [2, 1, 3, 1, 2, "request-1-contact-3/slides-v2.pdf", "zero-downtime-migrations.pdf", "application/pdf", PDF_BYTES, "approved", 7, 24],
     [3, 1, 4, 2, 1, "request-1-contact-4/slides-v1.pdf", "caching-strategies.pdf", "application/pdf", PDF_BYTES, "pending", 7, 6],
-    [4, 2, 3, null, 1, "headshot-3/elena.png", "elena-sorescu.png", "image/png", PNG_BYTES, "approved", 7, 120],
+    // A real image, not a placeholder byte string: this one is displayed as Elena's
+    // headshot on the speaker record and in the public speaker widgets.
+    [4, 2, 3, null, 1, "headshot-3/elena.svg", "elena-sorescu.svg", "image/svg+xml", Buffer.from(headshotSvg("Elena", "Sorescu", 3), "utf8"), "approved", 7, 120],
   ];
   for (const [id, requestId, contactId, sessionId, version, key, filename, type, bytes, approval, uploader, ageHours] of uploads) {
     push(
@@ -222,7 +247,7 @@ const main = async () => {
       `INSERT INTO file_uploads (id,request_id,event_id,contact_id,session_id,version,blob_key,filename,content_type,size,approval,reviewed_by_user_id,reviewed_at,uploaded_by,created_at) VALUES (${id},${requestId},${EV},${contactId},${sessionId ?? "NULL"},${version},${q(key)},${q(filename)},${q(type)},${bytes.length},${q(approval)},${approval === "pending" ? "NULL" : 5},${reviewed},${uploader},${NOW - ageHours * 3600});`
     );
   }
-  push(`UPDATE contacts SET headshot_blob_key='headshot-3/elena.png' WHERE id=3;`);
+  push(`UPDATE contacts SET headshot_blob_key='headshot-3/elena.svg' WHERE id=3;`);
 
   // The thread the denial produced, readable from both the portal and the admin.
   const comments = [

@@ -13,6 +13,7 @@ import {
   DEFAULT_DURATION_MIN,
   SLOT_MINUTES,
 } from "./agenda-grid";
+import type { PublicState } from "./labels";
 import {
   contacts,
   events,
@@ -47,6 +48,8 @@ export interface AgendaSession {
   friendlyId: string;
   title: string;
   abstract: string | null;
+  /** "held" keeps the session off every public surface. See app/lib/public.server.ts. */
+  publicState: PublicState;
   roomId: number | null;
   roomName: string | null;
   startsAt: Date | null;
@@ -155,6 +158,7 @@ async function loadSessions(eventId: number): Promise<AgendaSession[]> {
       friendlyId: sessions.friendlyId,
       title: sessions.title,
       abstract: sessions.abstract,
+      publicState: sessions.publicState,
       roomId: sessions.roomId,
       roomName: rooms.name,
       startsAt: sessions.startsAt,
@@ -212,6 +216,7 @@ async function loadSessions(eventId: number): Promise<AgendaSession[]> {
       friendlyId: row.friendlyId,
       title: row.title,
       abstract: row.abstract,
+      publicState: row.publicState,
       roomId: row.roomId,
       roomName: row.roomName,
       startsAt: row.startsAt,
