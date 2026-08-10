@@ -2,6 +2,7 @@
 // One primary button per view; everything else is secondary or ghost.
 
 import type { ReactNode } from "react";
+import { Form, Link } from "react-router";
 
 export const buttonPrimary =
   "inline-flex h-9 items-center justify-center rounded-md bg-accent px-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50";
@@ -127,5 +128,27 @@ export function Badge({ children }: { children: ReactNode }) {
     <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500">
       {children}
     </span>
+  );
+}
+
+/** Top bar for signed-in non-admin surfaces (speaker portal, reviewer dashboard).
+ *  Deliberately free of any organizer navigation. */
+export function AppBar({ title, userName, homeTo }: { title: string; userName: string; homeTo: string }) {
+  return (
+    <header className="border-b border-slate-200 bg-white">
+      <div className="mx-auto flex h-14 w-full max-w-[960px] items-center justify-between px-6">
+        <Link to={homeTo} className="text-base font-semibold tracking-tight text-slate-900">
+          {title}
+        </Link>
+        <div className="flex items-center gap-4">
+          <span className="hidden text-[13px] text-slate-500 sm:inline">{userName}</span>
+          <Form method="post" action="/logout">
+            <button type="submit" className="text-[13px] font-medium text-slate-500 hover:text-slate-900">
+              Sign out
+            </button>
+          </Form>
+        </div>
+      </div>
+    </header>
   );
 }

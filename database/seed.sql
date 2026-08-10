@@ -17,6 +17,7 @@ DELETE FROM session_participants;
 DELETE FROM session_tags;
 DELETE FROM eval_plans;
 DELETE FROM eval_criteria;
+DELETE FROM eval_plan_reviewers;
 DELETE FROM eval_assignments;
 DELETE FROM eval_scores;
 DELETE FROM ai_reviews;
@@ -113,6 +114,7 @@ INSERT INTO session_participants (session_id,contact_id,role,invite_status,sort)
 INSERT INTO sessions (id,event_id,friendly_id,title,abstract,is_abstract,is_draft,status_id,form_id,submitted_by,track_id,format_id,level_id,room_id,starts_at,ends_at,answers_json,submitted_at,created_at,updated_at) VALUES (12,1,'SESS-1012','Prompt Injection Defense in Internal Tools','Threat model and mitigations for LLM features inside admin dashboards.',1,0,1,1,5,2,2,3,NULL,NULL,NULL,'{}',1786262400,1786219200,1786305600);
 INSERT INTO session_participants (session_id,contact_id,role,invite_status,sort) VALUES (12,5,'speaker','confirmed',0);
 INSERT INTO eval_plans (id,event_id,name,round,blind,anonymized,scale_type,max_evals_per_submission,due_at,status,created_at) VALUES (1,1,'Round 1 Program Review',1,1,0,'stars5',3,1806537540,'active',1786305600);
+INSERT INTO eval_plan_reviewers (id,plan_id,user_id,created_at) VALUES (1,1,6,1786305600);
 INSERT INTO eval_assignments (id,plan_id,evaluator_user_id,session_id,status,created_at) VALUES (1,1,6,5,'done',1786305600);
 INSERT INTO eval_scores (assignment_id,criterion_id,score,comment,created_at) VALUES (1,NULL,4,'Strong practical framing and real data. Clear accept for AI Tooling.',1786305600);
 INSERT INTO eval_assignments (id,plan_id,evaluator_user_id,session_id,status,created_at) VALUES (2,1,6,6,'done',1786305600);

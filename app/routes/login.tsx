@@ -11,11 +11,11 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: "Sign in to OpenSession" }];
 }
 
-/** Where to land after signing in, by role. Speakers and evaluators go to the
- *  landing page until Phase 2 builds the reviewer dashboard and Phase 3 the portal;
- *  sending them to /admin would greet them with a 403. */
+/** Where to land after signing in, by role. */
 function landingFor(role: string): string {
-  return role === "admin" || role === "organizer" ? "/admin" : "/";
+  if (role === "admin" || role === "organizer") return "/admin";
+  if (role === "evaluator") return "/review";
+  return "/portal";
 }
 
 function safeNext(raw: string | null): string | null {

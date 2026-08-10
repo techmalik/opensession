@@ -55,6 +55,13 @@ export function daysUntil(target: Date | null | undefined, now = new Date()): nu
   return Math.ceil(ms / 86_400_000);
 }
 
+/** Review scores: whole numbers as "4.0", fractions trimmed to "3.33" / "3.5". */
+export function formatScore(value: number | null | undefined): string {
+  if (value == null) return "";
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? rounded.toFixed(1) : String(rounded);
+}
+
 export function slugify(input: string): string {
   return input
     .toLowerCase()

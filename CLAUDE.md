@@ -94,9 +94,15 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
   loader. CSV exports and similar get their own resource route (pattern:
   app/routes/admin.export.tsx).
 - Auth guards: requireUser redirects to /login?next=..., requireOrganizer
-  returns 403. After login, speakers and evaluators land on "/" until the
-  portal (Phase 3) and reviewer dashboard (Phase 2) exist; update landingFor
-  in app/routes/login.tsx when those ship.
+  returns 403. After login: organizers land on /admin, evaluators on /review,
+  speakers on /portal (landingFor in app/routes/login.tsx).
+- Public CFP URLs: /cfp/:eventSlug is the entry page, the live form is
+  /submit/:eventSlug/:formSlug, and /cfp/:eventSlug/submit redirects there.
+- Speaker-visible status mapping (app/lib/cfp.server.ts speakerStatus):
+  queues stay internal, speakers see Under review until Accepted/Declined.
+- Setting a submission's status to accepted flips is_abstract to 0 (it becomes
+  a session); any other status flips it back. Send-decisions also stamps
+  decisionEmailSentAt.
 - The session cookie is Secure: Safari will not store it on http://localhost.
   Chromium, Playwright, and the deployed https site are fine.
 - Live URL: https://opensession.opensession.workers.dev. Remote D1 is

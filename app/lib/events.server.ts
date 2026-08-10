@@ -5,7 +5,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { getDb } from "./db.server";
 import { slugify } from "./format";
-import { events, statuses } from "../../database/schema";
+import { emailTemplates, events, statuses } from "../../database/schema";
 
 /** The five system statuses, in pipeline order. Vocabulary is fixed by CLAUDE.md. */
 export const SYSTEM_STATUSES: { key: string; label: string; color: string }[] = [
@@ -41,8 +41,39 @@ export interface NewEventInput {
   createdBy: number;
 }
 
-/** Creates the event and its five system statuses. Tracks, formats, and rooms start
- *  empty and are managed under Settings. */
+/** The default email templates every event starts with. Merge tags:
+ *  {speaker_name}, {talk_title}, {event_name}, {status}, {portal_url}. */
+const DEFAULT_TEMPLATES: { key: string; name: string; subject: string; bodyHtml: string }[] = [
+  {
+    key: "confirmation",
+    name: "Submission confirmation",
+    subject: "We received your proposal for {event_name}",
+    bodyHtml: '<p>Hi {speaker_name},</p><p>We received "{talk_title}". You can edit it from your portal until the form closes.</p><p>{portal_url}</p>',
+  },
+  {
+    key: "acceptance",
+    name: "Acceptance",
+    subject: "Your talk has been accepted to {event_name}",
+    bodyHtml:
+      '<p>Hi {speaker_name},</p><p>Congratulations. Your session "{talk_title}" has been accepted. Please confirm your participation and complete your speaker profile.</p><p>{portal_url}</p>',
+  },
+  {
+    key: "decline",
+    name: "Decline",
+    subject: "Update on your {event_name} proposal",
+    bodyHtml:
+      '<p>Hi {speaker_name},</p><p>Thank you for submitting "{talk_title}". We are not able to include it this year. We would love to see you at the event.</p>',
+  },
+  {
+    key: "schedule",
+    name: "Schedule notice",
+    subject: "Your session is scheduled: {talk_title}",
+    bodyHtml: '<p>Hi {speaker_name},</p><p>"{talk_title}" is scheduled. A calendar invite is attached.</p>',
+  },
+];
+
+/** Creates the event, its five system statuses, and the default email templates.
+ *  Tracks, formats, and rooms start empty and are managed under Settings. */
 export async function createEvent(input: NewEventInput): Promise<number> {
   const db = getDb();
   const now = new Date();
@@ -73,6 +104,17 @@ export async function createEvent(input: NewEventInput): Promise<number> {
       color: status.color,
       isSystem: true,
       sort: index,
+    }))
+  );
+
+  await db.insert(emailTemplates).values(
+    DEFAULT_TEMPLATES.map((template) => ({
+      eventId: created.id,
+      key: template.key,
+      name: template.name,
+      subject: template.subject,
+      bodyHtml: template.bodyHtml,
+      createdAt: now,
     }))
   );
 

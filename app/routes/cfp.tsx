@@ -34,6 +34,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     .select({
       id: forms.id,
       name: forms.name,
+      slug: forms.slug,
       welcomeHtml: forms.welcomeHtml,
       opensAt: forms.opensAt,
       closesAt: forms.closesAt,
@@ -81,7 +82,7 @@ export default function Cfp({ loaderData }: Route.ComponentProps) {
             />
           ) : null}
           <Link
-            to={`/cfp/${event.slug}/submit`}
+            to={`/submit/${event.slug}/${form.slug}`}
             className="mt-8 inline-flex h-11 items-center justify-center rounded-md bg-accent px-4 text-base font-medium text-white hover:bg-accent-hover"
           >
             Start a submission

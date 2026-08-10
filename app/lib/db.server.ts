@@ -9,7 +9,9 @@ import { env } from "cloudflare:workers";
 // .dev.vars. Narrow it here so a missing regeneration cannot break the build.
 interface Bindings {
   DB: D1Database;
+  FILES?: R2Bucket;
   SESSION_SECRET?: string;
+  BREVO_API_KEY?: string;
   EMAIL_FROM?: string;
   EMAIL_FROM_NAME?: string;
   APP_BASE_URL?: string;
