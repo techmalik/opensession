@@ -75,6 +75,7 @@ export default [
     index("routes/event.dashboard.tsx"),
     route("settings", "routes/event.settings.tsx"),
     route("settings/taxonomy", "routes/event.taxonomy.tsx"),
+    route("settings/integrations", "routes/event.integrations.tsx"),
 
     route("submissions", "routes/event.submissions.tsx"),
     route("submissions/export.csv", "routes/event.submissions.export.tsx"),

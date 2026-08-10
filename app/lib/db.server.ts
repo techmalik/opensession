@@ -14,6 +14,8 @@ interface Bindings {
   SESSION_SECRET?: string;
   BREVO_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
+  AIRTABLE_API_KEY?: string;
+  AIRTABLE_BASE_ID?: string;
   EMAIL_FROM?: string;
   EMAIL_FROM_NAME?: string;
   APP_BASE_URL?: string;

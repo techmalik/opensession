@@ -4,7 +4,7 @@ import type { Route } from "./+types/event.taxonomy";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { formats, levels, rooms, tags, tracks } from "../../database/schema";
-import { Card, PageHeader, buttonPrimary, buttonGhost, buttonSecondary, inputClass } from "../components/ui";
+import { Card, PageHeader, SubNav, buttonPrimary, buttonGhost, buttonSecondary, inputClass } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Tracks and formats" }];
@@ -273,11 +273,14 @@ export default function Taxonomy({ loaderData, actionData, params }: Route.Compo
       <PageHeader
         title="Tracks and formats"
         description="The lists submitters and organizers pick from. Order here is the order they appear everywhere else."
-        actions={
-          <Link to={`/admin/${params.eventId}/settings`} className={buttonSecondary}>
-            Back to Settings
-          </Link>
-        }
+      />
+      <SubNav
+        items={[
+          { to: `/admin/${params.eventId}/settings`, label: "Event" },
+          { to: `/admin/${params.eventId}/settings/taxonomy`, label: "Tracks and formats" },
+          { to: `/admin/${params.eventId}/settings/integrations`, label: "Integrations" },
+        ]}
+        current={`/admin/${params.eventId}/settings/taxonomy`}
       />
 
       {actionData?.error ? (

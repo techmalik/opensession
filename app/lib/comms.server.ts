@@ -17,6 +17,33 @@ export interface TemplateBody {
 /** Built-in copy used when an event has no row for the key yet, so an event created
  *  before a template existed never lands on an empty compose form. */
 const BUILT_IN: Record<string, TemplateBody> = {
+  acceptance: {
+    key: "acceptance",
+    name: "Acceptance",
+    subject: "Your talk has been accepted to {event_name}",
+    body:
+      '<p>Hi {speaker_name},</p><p>Congratulations. Your session "{talk_title}" has been accepted. Please confirm your participation and complete your speaker profile.</p><p>{portal_url}</p>',
+  },
+  decline: {
+    key: "decline",
+    name: "Decline",
+    subject: "Update on your {event_name} proposal",
+    body:
+      '<p>Hi {speaker_name},</p><p>Thank you for submitting "{talk_title}". We are not able to include it this year. We would love to see you at the event.</p>',
+  },
+  cfp_reminder: {
+    key: "cfp_reminder",
+    name: "CFP close reminder",
+    subject: "{event_name}: {form_name} closes {close_date}",
+    body:
+      "<p>Hi {first_name},</p><p>{form_name} for {event_name} closes on {close_date}.</p><p>{reason}</p><p>You can finish it here: {portal_url}</p>",
+  },
+  weekly_digest: {
+    key: "weekly_digest",
+    name: "Weekly speaker digest",
+    subject: "{event_name}: what is still outstanding",
+    body: "<p>Hi {first_name},</p><p>This is your weekly summary for {event_name}.</p>{task_list}<p>{portal_url}</p>",
+  },
   portal_invite: {
     key: "portal_invite",
     name: "Speaker portal invite",
@@ -148,3 +175,51 @@ export async function recentSends(eventId: number, limit = 200) {
     .limit(limit)
     .all();
 }
+
+/** Upserts an event's copy of a template. Editing a built-in creates the row the
+ *  first time it is saved; every send path reads getTemplate, so the edit applies
+ *  everywhere that key is used. */
+export async function saveTemplate(eventId: number, input: TemplateBody): Promise<void> {
+  const db = getDb();
+  const existing = await db
+    .select({ id: emailTemplates.id })
+    .from(emailTemplates)
+    .where(and(eq(emailTemplates.eventId, eventId), eq(emailTemplates.key, input.key)))
+    .get();
+
+  if (existing) {
+    await db
+      .update(emailTemplates)
+      .set({ name: input.name, subject: input.subject, bodyHtml: input.body })
+      .where(eq(emailTemplates.id, existing.id));
+    return;
+  }
+  await db.insert(emailTemplates).values({
+    eventId,
+    key: input.key,
+    name: input.name,
+    subject: input.subject,
+    bodyHtml: input.body,
+    createdAt: new Date(),
+  });
+}
+
+/** Drops the event's override so the built-in copy applies again. */
+export async function resetTemplate(eventId: number, key: string): Promise<void> {
+  const db = getDb();
+  await db.delete(emailTemplates).where(and(eq(emailTemplates.eventId, eventId), eq(emailTemplates.key, key)));
+}
+
+export const MERGE_TAGS: { tag: string; meaning: string }[] = [
+  { tag: "{speaker_name}", meaning: "Full name of the recipient" },
+  { tag: "{first_name}", meaning: "First name, falls back to the full name" },
+  { tag: "{event_name}", meaning: "This event's name" },
+  { tag: "{talk_title}", meaning: "Session title, where the send is about one session" },
+  { tag: "{portal_url}", meaning: "Link to the speaker portal" },
+  { tag: "{task_list}", meaning: "Outstanding tasks and files, as an HTML list" },
+  { tag: "{session_time}", meaning: "Scheduled start, schedule notices only" },
+  { tag: "{room_name}", meaning: "Room, schedule notices only" },
+  { tag: "{form_name}", meaning: "Form name, CFP reminders only" },
+  { tag: "{close_date}", meaning: "Form close date, CFP reminders only" },
+  { tag: "{reason}", meaning: "Why this reminder was sent, CFP reminders only" },
+];

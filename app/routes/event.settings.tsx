@@ -1,4 +1,4 @@
-import { Form, Link, useNavigation } from "react-router";
+import { Form, useNavigation } from "react-router";
 import { eq } from "drizzle-orm";
 import type { Route } from "./+types/event.settings";
 import { getDb } from "../lib/db.server";
@@ -12,8 +12,8 @@ import {
   Field,
   ErrorSummary,
   PageHeader,
+  SubNav,
   buttonPrimary,
-  buttonSecondary,
   inputClass,
   selectClass,
   textareaClass,
@@ -87,11 +87,14 @@ export default function EventSettings({ loaderData, actionData, params }: Route.
       <PageHeader
         title="Settings"
         description="Event details, and the tracks, formats, rooms, levels, and tags this event uses."
-        actions={
-          <Link to={`/admin/${params.eventId}/settings/taxonomy`} className={buttonSecondary}>
-            Tracks and formats
-          </Link>
-        }
+      />
+      <SubNav
+        items={[
+          { to: `/admin/${params.eventId}/settings`, label: "Event" },
+          { to: `/admin/${params.eventId}/settings/taxonomy`, label: "Tracks and formats" },
+          { to: `/admin/${params.eventId}/settings/integrations`, label: "Integrations" },
+        ]}
+        current={`/admin/${params.eventId}/settings`}
       />
 
       <div className="max-w-[640px]">

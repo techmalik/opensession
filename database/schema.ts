@@ -460,7 +460,9 @@ export const jobs = sqliteTable(
   "jobs",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    kind: text("kind", { enum: ["email", "airtable_push", "airtable_pull", "reminder", "digest"] }).notNull(),
+    kind: text("kind", {
+      enum: ["email", "airtable_push", "airtable_pull", "reminder", "digest", "accelevents_push"],
+    }).notNull(),
     payloadJson: text("payload_json").notNull().default("{}"),
     runAfter: integer("run_after", { mode: "timestamp" }).notNull(),
     attempts: integer("attempts").notNull().default(0),

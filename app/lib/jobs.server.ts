@@ -28,23 +28,48 @@ const handlers: Record<string, Handler> = {
     const status = await deliverEmail(env, sendId, ics ?? undefined);
     if (status === "failed") throw new Error(`delivery failed for send ${sendId}`);
   },
-  airtable_push: async () => {
-    // Phase 4: push changed rows to Airtable (airtable_links tracks record mapping)
+  // Payload: {}. Pushes every changed local row to Airtable.
+  airtable_push: async (env) => {
+    const { pushToAirtable } = await import("./airtable.server");
+    await pushToAirtable(env);
   },
-  airtable_pull: async () => {
-    // Phase 4: pull team edits from Airtable back into D1
+  // Payload: {}. Pulls records changed in Airtable back into D1.
+  airtable_pull: async (env) => {
+    const { pullFromAirtable } = await import("./airtable.server");
+    await pullFromAirtable(env);
   },
-  reminder: async () => {
-    // Phase 4: CFP close reminders (5 days / 1 day, from forms.reminder_days_json)
+  // Payload: { formId, days }. CFP close reminder, scheduled off reminder_days_json.
+  reminder: async (_env, payload) => {
+    const { sendFormReminders } = await import("./notifications.server");
+    await sendFormReminders(Number(payload.formId), Number(payload.days ?? 0));
   },
-  digest: async () => {
-    // Phase 4: weekly speaker digest
+  // Payload: { eventId, week }. Weekly summary to opted-in speakers.
+  digest: async (_env, payload) => {
+    const { sendSpeakerDigest } = await import("./notifications.server");
+    await sendSpeakerDigest(Number(payload.eventId));
+  },
+  // Payload: {}. Hourly Accelevents push, only when the integration is enabled.
+  accelevents_push: async (env) => {
+    const { pushToAccelevents } = await import("./accelevents.server");
+    await pushToAccelevents(env);
   },
 };
 
 export async function runJobs(env: JobsEnv): Promise<void> {
   const db = drizzle(env.DB);
   const now = new Date();
+
+  // Turn recurring intentions (form reminder offsets, the weekly digest, the hourly
+  // integration pushes) into dated rows before claiming work. Idempotent per payload.
+  try {
+    const { ensureScheduledJobs } = await import("./notifications.server");
+    await ensureScheduledJobs(now);
+    const { ensureIntegrationJobs } = await import("./integrations.server");
+    await ensureIntegrationJobs(env, now);
+  } catch (err) {
+    console.warn("job scheduling sweep failed", err);
+  }
+
   const due = await db
     .select()
     .from(jobs)
