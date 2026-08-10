@@ -107,3 +107,35 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
   Chromium, Playwright, and the deployed https site are fine.
 - Live URL: https://opensession.opensession.workers.dev. Remote D1 is
   migrated and seeded. Local D1 resets with `npm run db:local`.
+
+## Phase 3 notes (speakers, agenda, content)
+
+- Client-safe constant files, because route components bundle whatever they
+  import: app/lib/labels.ts (status/audience/approval labels and their unions)
+  and app/lib/agenda-grid.ts (grid geometry). The .server libs re-export the
+  types from labels.ts rather than declaring their own.
+- Speaker portal is /portal plus /portal/{profile,tasks,files,files/:requestId,
+  schedule,schedule.ics}. Every query starts from app/lib/portal.server.ts,
+  which resolves the signed-in speaker's contactId; routes never widen it.
+- Tasks and file requests share one audience model (all_speakers,
+  accepted_speakers, selected) in app/lib/tasks.server.ts. "selected" resolves
+  through task_assignees / file_request_assignees.
+- A deliverable is the pair (file request, speaker). Re-uploading writes a new
+  file_uploads row with version+1 and approval back to pending; nothing is
+  overwritten. Denying requires a comment.
+- Agenda grid runs 08:00 to 20:00 in the event timezone, 15-minute rows.
+  Conflicts (room, speaker, outside hours) are recomputed server-side on every
+  render and are warned, not blocked. Placement has a form path as well as
+  pointer drag: the eval agent may not drag.
+- Timezone math lives in app/lib/format.ts (zonedParts / zonedToUtc). Sessions
+  store absolute instants; only the grid thinks in wall clock.
+- Email has three entry points in app/lib/email.ts: recordEmail (audit row),
+  deliverEmail (Brevo), and queueEmail (row now, delivery by the cron job of
+  kind "email" whose payload carries {sendId, ics}). Bulk sends use queueEmail.
+- AI agenda assist tiers: AI binding, then ANTHROPIC_API_KEY, then a
+  deterministic greedy packer. Model output is validated against real rooms,
+  days, and slots, and anything it misses is back-filled by the packer.
+- fflate is the one added dependency, for the deliverables ZIP export.
+- Not built yet in this area: session title/abstract editing with change
+  history and restore (CNT-09, CNT-11), and the content approval gate on the
+  public agenda (CNT-12).

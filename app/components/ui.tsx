@@ -131,6 +131,92 @@ export function Badge({ children }: { children: ReactNode }) {
   );
 }
 
+export function Notice({ children }: { children: ReactNode }) {
+  return <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">{children}</div>;
+}
+
+export function ErrorNotice({ children }: { children: ReactNode }) {
+  return (
+    <div role="alert" className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-600">
+      {children}
+    </div>
+  );
+}
+
+/** Sub-navigation inside one admin area. Plain links, current one in the accent. */
+export function SubNav({ items, current }: { items: { to: string; label: string }[]; current: string }) {
+  return (
+    <nav className="mb-4 flex flex-wrap items-center gap-1 border-b border-slate-200 pb-2">
+      {items.map((item) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          className={`rounded-md px-2 py-1 text-[13px] font-medium ${
+            item.to === current ? "bg-slate-50 text-accent" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+          }`}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+const PORTAL_TABS: { to: string; label: string }[] = [
+  { to: "/portal", label: "Overview" },
+  { to: "/portal/schedule", label: "My schedule" },
+  { to: "/portal/tasks", label: "My tasks" },
+  { to: "/portal/files", label: "My files" },
+  { to: "/portal/profile", label: "My profile" },
+];
+
+/** Speaker portal navigation. Horizontal scroll rather than wrap at 375px, so the
+ *  tab row never pushes the page content below the fold on a phone. */
+export function PortalNav({ current }: { current: string }) {
+  return (
+    <nav aria-label="Portal sections" className="-mx-6 mb-5 overflow-x-auto px-6">
+      <ul className="flex min-w-max items-center gap-1 border-b border-slate-200 pb-2">
+        {PORTAL_TABS.map((tab) => (
+          <li key={tab.to}>
+            <Link
+              to={tab.to}
+              aria-current={tab.to === current ? "page" : undefined}
+              className={`inline-flex h-9 items-center rounded-md px-3 text-sm font-medium ${
+                tab.to === current ? "bg-slate-50 text-accent" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** Task and deliverable states, distinct from submission statuses. */
+export function TaskBadge({ status }: { status: "done" | "todo" | "overdue" }) {
+  const dot = status === "done" ? "bg-accent" : status === "overdue" ? "bg-rose-600" : "bg-slate-400";
+  const label = status === "done" ? "Complete" : status === "overdue" ? "Overdue" : "Incomplete";
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[13px] text-slate-900">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
+export function ApprovalBadge({ approval }: { approval: "pending" | "approved" | "denied" }) {
+  const dot = approval === "approved" ? "bg-accent" : approval === "denied" ? "bg-rose-600" : "bg-slate-400";
+  const label = approval === "approved" ? "Approved" : approval === "denied" ? "Denied" : "Pending review";
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[13px] text-slate-900">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
 /** Top bar for signed-in non-admin surfaces (speaker portal, reviewer dashboard).
  *  Deliberately free of any organizer navigation. */
 export function AppBar({ title, userName, homeTo }: { title: string; userName: string; homeTo: string }) {

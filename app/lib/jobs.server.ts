@@ -4,6 +4,7 @@
 
 import { drizzle } from "drizzle-orm/d1";
 import { and, eq, lte } from "drizzle-orm";
+import { deliverEmail } from "./email";
 import { jobs } from "../../database/schema";
 
 export interface JobsEnv {
@@ -19,8 +20,13 @@ export interface JobsEnv {
 type Handler = (env: JobsEnv, payload: Record<string, unknown>) => Promise<void>;
 
 const handlers: Record<string, Handler> = {
-  email: async () => {
-    // Phase 4: deliver queued email_sends rows via app/lib/email.ts
+  // Payload: { sendId, ics }. The email_sends row already exists; this delivers it.
+  email: async (env, payload) => {
+    const sendId = Number(payload.sendId);
+    if (!Number.isInteger(sendId)) throw new Error("email job has no sendId");
+    const ics = payload.ics as { filename: string; content: string } | null | undefined;
+    const status = await deliverEmail(env, sendId, ics ?? undefined);
+    if (status === "failed") throw new Error(`delivery failed for send ${sendId}`);
   },
   airtable_push: async () => {
     // Phase 4: push changed rows to Airtable (airtable_links tracks record mapping)

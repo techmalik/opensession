@@ -34,10 +34,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const file = await getFile(bindings, upload.blobKey);
   if (!file) throw new Response("File data missing", { status: 404 });
 
+  // ?inline=1 renders the file in place (headshot thumbnails); the default is a
+  // download, which is what every list-level link wants.
+  const inline = new URL(request.url).searchParams.get("inline") === "1";
   return new Response(file.data, {
     headers: {
       "Content-Type": file.contentType,
-      "Content-Disposition": `attachment; filename="${upload.filename.replace(/"/g, "")}"`,
+      "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${upload.filename.replace(/"/g, "")}"`,
       "Cache-Control": "private, max-age=0",
     },
   });

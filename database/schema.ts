@@ -28,6 +28,8 @@ export const events = sqliteTable("events", {
   startsAt: integer("starts_at", { mode: "timestamp" }),
   endsAt: integer("ends_at", { mode: "timestamp" }),
   status: text("status", { enum: ["draft", "active", "archived"] }).notNull().default("active"),
+  // Set by the agenda publish action. Null = the public agenda is not live yet.
+  agendaPublishedAt: integer("agenda_published_at", { mode: "timestamp" }),
   createdBy: integer("created_by"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
@@ -51,6 +53,8 @@ export const contacts = sqliteTable(
     website: text("website"),
     dietary: text("dietary"),
     tshirt: text("tshirt"),
+    // Free-text arrival/logistics notes kept on the speaker record. No booking UI.
+    travel: text("travel"),
     notes: text("notes"),
     tagsJson: text("tags_json").notNull().default("[]"), // CRM tags, string[]
     rating: integer("rating"), // CRM 1..5
@@ -68,6 +72,8 @@ export const eventContacts = sqliteTable(
     eventId: integer("event_id").notNull(),
     contactId: integer("contact_id").notNull(),
     kind: text("kind", { enum: ["speaker", "submitter", "attendee", "staff"] }).notNull().default("speaker"),
+    // Roster workflow status, independent of a submission's decision status.
+    status: text("status", { enum: ["invited", "confirmed", "declined"] }).notNull().default("invited"),
     digestOptIn: integer("digest_opt_in", { mode: "boolean" }).notNull().default(true),
   },
   (t) => [
@@ -318,10 +324,23 @@ export const portalTasks = sqliteTable("portal_tasks", {
   title: text("title").notNull(),
   description: text("description"),
   dueAt: integer("due_at", { mode: "timestamp" }),
-  appliesTo: text("applies_to", { enum: ["all_speakers", "accepted_speakers"] }).notNull().default("accepted_speakers"),
+  // "selected" resolves through taskAssignees; the other two resolve from the roster.
+  appliesTo: text("applies_to", { enum: ["all_speakers", "accepted_speakers", "selected"] })
+    .notNull()
+    .default("accepted_speakers"),
   sort: integer("sort").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+export const taskAssignees = sqliteTable(
+  "task_assignees",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    taskId: integer("task_id").notNull(),
+    contactId: integer("contact_id").notNull(),
+  },
+  (t) => [uniqueIndex("task_assignees_uq").on(t.taskId, t.contactId)]
+);
 
 export const taskCompletions = sqliteTable(
   "task_completions",
@@ -343,9 +362,22 @@ export const fileRequests = sqliteTable("file_requests", {
   instructions: text("instructions"),
   dueAt: integer("due_at", { mode: "timestamp" }),
   sampleBlobKey: text("sample_blob_key"),
-  appliesTo: text("applies_to", { enum: ["all_speakers", "accepted_speakers"] }).notNull().default("accepted_speakers"),
+  sampleFilename: text("sample_filename"),
+  appliesTo: text("applies_to", { enum: ["all_speakers", "accepted_speakers", "selected"] })
+    .notNull()
+    .default("accepted_speakers"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+export const fileRequestAssignees = sqliteTable(
+  "file_request_assignees",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    requestId: integer("request_id").notNull(),
+    contactId: integer("contact_id").notNull(),
+  },
+  (t) => [uniqueIndex("file_request_assignees_uq").on(t.requestId, t.contactId)]
+);
 
 export const fileUploads = sqliteTable(
   "file_uploads",
@@ -361,6 +393,8 @@ export const fileUploads = sqliteTable(
     contentType: text("content_type").notNull().default("application/octet-stream"),
     size: integer("size").notNull().default(0),
     approval: text("approval", { enum: ["pending", "approved", "denied"] }).notNull().default("pending"),
+    reviewedByUserId: integer("reviewed_by_user_id"),
+    reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
     uploadedBy: integer("uploaded_by"), // userId
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   },

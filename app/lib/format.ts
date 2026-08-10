@@ -79,6 +79,148 @@ export function toCsv(headers: string[], rows: (string | number | null | undefin
   return [headers, ...rows].map((row) => row.map(escape).join(",")).join("\r\n");
 }
 
+/** RFC 4180 reader: handles quoted fields, embedded commas, quotes, and newlines.
+ *  Returns raw rows including the header row. Blank trailing lines are dropped. */
+export function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+  const input = text.replace(/^﻿/, "");
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
+    if (quoted) {
+      if (char === '"') {
+        if (input[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          quoted = false;
+        }
+      } else {
+        cell += char;
+      }
+      continue;
+    }
+    if (char === '"') quoted = true;
+    else if (char === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && input[i + 1] === "\n") i++;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  if (cell !== "" || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows.filter((r) => r.some((value) => value.trim() !== ""));
+}
+
+export function formatBytes(size: number): string {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ---------- Timezone math ----------
+// The agenda thinks in the event's local wall clock but stores absolute instants.
+// These two functions are the only conversion between the two.
+
+export interface ZonedParts {
+  year: number;
+  month: number; // 1-12
+  day: number;
+  hour: number;
+  minute: number;
+}
+
+/** Wall-clock parts of `date` as seen in `timeZone`. */
+export function zonedParts(date: Date, timeZone: string): ZonedParts {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute") };
+}
+
+/** The instant at which `timeZone` shows this wall clock. */
+export function zonedToUtc(parts: ZonedParts, timeZone: string): Date {
+  const guess = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
+  const seen = zonedParts(new Date(guess), timeZone);
+  const seenAsUtc = Date.UTC(seen.year, seen.month - 1, seen.day, seen.hour, seen.minute);
+  return new Date(guess - (seenAsUtc - guess));
+}
+
+/** YYYY-MM-DD in the event timezone, the value an <input type="date"> wants. */
+export function toZonedDateValue(date: Date, timeZone: string): string {
+  const p = zonedParts(date, timeZone);
+  return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
+}
+
+/** HH:MM in the event timezone, the value an <input type="time"> wants. */
+export function toZonedTimeValue(date: Date, timeZone: string): string {
+  const p = zonedParts(date, timeZone);
+  return `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+}
+
+export function parseDayValue(value: string): { year: number; month: number; day: number } | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+}
+
+/** Combines a YYYY-MM-DD day and an HH:MM time into an instant in `timeZone`. */
+export function zonedDayTimeToUtc(day: string, time: string, timeZone: string): Date | null {
+  const parsed = parseDayValue(day);
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!parsed || !match) return null;
+  return zonedToUtc({ ...parsed, hour: Number(match[1]), minute: Number(match[2]) }, timeZone);
+}
+
+/** Every calendar day the event covers, as YYYY-MM-DD in the event timezone. */
+export function eventDays(start: Date | null, end: Date | null, timeZone: string): string[] {
+  if (!start) return [];
+  const last = end && end > start ? end : start;
+  const days: string[] = [];
+  // Step by UTC noon of each local day so a DST shift cannot skip or repeat one.
+  let cursor = zonedParts(start, timeZone);
+  const lastValue = toZonedDateValue(last, timeZone);
+  for (let guard = 0; guard < 60; guard++) {
+    const value = `${cursor.year}-${String(cursor.month).padStart(2, "0")}-${String(cursor.day).padStart(2, "0")}`;
+    days.push(value);
+    if (value >= lastValue) break;
+    const next = new Date(Date.UTC(cursor.year, cursor.month - 1, cursor.day, 12) + 86_400_000);
+    cursor = { year: next.getUTCFullYear(), month: next.getUTCMonth() + 1, day: next.getUTCDate(), hour: 12, minute: 0 };
+  }
+  return days;
+}
+
+export function formatDayLabel(day: string, timeZone: string): string {
+  const parsed = parseDayValue(day);
+  if (!parsed) return day;
+  const date = zonedToUtc({ ...parsed, hour: 12, minute: 0 }, timeZone);
+  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone }).format(date);
+}
+
+export function formatTimeOfDay(value: Date | null | undefined, timeZone?: string): string {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(value);
+}
+
 export function csvResponse(filename: string, body: string): Response {
   return new Response(body, {
     headers: {

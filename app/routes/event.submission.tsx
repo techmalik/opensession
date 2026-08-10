@@ -2,20 +2,22 @@
 // the evaluations recorded so far, files, and a small activity trail.
 
 import { Form, Link } from "react-router";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { Route } from "./+types/event.submission";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { getFields, withColumnFallbacks, type FieldDef } from "../lib/cfp.server";
 import { getCriteria, reviewScore, type CriterionDef } from "../lib/evals.server";
-import { formatDateTime, formatScore } from "../lib/format";
+import { formatBytes, formatDateTime, formatScore } from "../lib/format";
 import { ROLE_LABEL } from "../lib/labels";
 import {
   contacts,
   evalAssignments,
   evalPlans,
   evalScores,
+  eventContacts,
   events,
+  fileRequests,
   fileUploads,
   formats,
   levels,
@@ -25,11 +27,14 @@ import {
   tracks,
   users,
 } from "../../database/schema";
-import { Card, PageHeader, StatusBadge, buttonPrimary, selectClass } from "../components/ui";
+import { ApprovalBadge, Card, PageHeader, StatusBadge, buttonPrimary, buttonSecondary, inputClass, selectClass } from "../components/ui";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: loaderData?.session ? `${loaderData.session.friendlyId} ${loaderData.session.title}` : "Submission" }];
 }
+
+/** Roles a person can hold on a session, in the order the picker shows them. */
+const ROLE_KEYS = ["speaker", "co_speaker", "panelist", "moderator", "chairperson"] as const;
 
 function parseAnswers(raw: string): Record<string, string> {
   try {
@@ -159,11 +164,25 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const doneScores = evaluations.filter((e) => e.status === "done" && e.score != null);
   const scoreAvg = doneScores.length > 0 ? doneScores.reduce((sum, e) => sum + (e.score ?? 0), 0) / doneScores.length : null;
 
+  // The session's Files tab: everything uploaded against this session, newest
+  // version first, with its review state and where it came from.
   const files = await db
-    .select({ id: fileUploads.id, filename: fileUploads.filename, size: fileUploads.size, createdAt: fileUploads.createdAt, version: fileUploads.version })
+    .select({
+      id: fileUploads.id,
+      filename: fileUploads.filename,
+      size: fileUploads.size,
+      createdAt: fileUploads.createdAt,
+      version: fileUploads.version,
+      approval: fileUploads.approval,
+      requestTitle: fileRequests.title,
+      firstName: contacts.firstName,
+      lastName: contacts.lastName,
+    })
     .from(fileUploads)
+    .leftJoin(fileRequests, eq(fileUploads.requestId, fileRequests.id))
+    .leftJoin(contacts, eq(fileUploads.contactId, contacts.id))
     .where(eq(fileUploads.sessionId, sessionId))
-    .orderBy(asc(fileUploads.createdAt))
+    .orderBy(desc(fileUploads.createdAt))
     .all();
 
   return {
@@ -205,7 +224,52 @@ export async function action({ request, params }: Route.ActionArgs) {
   const db = getDb();
 
   const form = await request.formData();
-  if (String(form.get("intent")) !== "set-status") return { error: null };
+  const intent = String(form.get("intent") ?? "");
+
+  // Speaker list edits live here because the agenda's conflict engine keys off them:
+  // a co-speaker added late is exactly what causes a double-booking.
+  if (intent === "add-speaker") {
+    const email = String(form.get("email") ?? "").trim().toLowerCase();
+    const role = String(form.get("role") ?? "speaker");
+    if (!email.includes("@")) return { error: "Enter the speaker's email address." };
+
+    const contact = await db.select({ id: contacts.id }).from(contacts).where(eq(contacts.email, email)).get();
+    if (!contact) {
+      return { error: "No contact with that email. Add them under Speakers first." };
+    }
+    const existing = await db
+      .select({ id: sessionParticipants.id })
+      .from(sessionParticipants)
+      .where(and(eq(sessionParticipants.sessionId, sessionId), eq(sessionParticipants.contactId, contact.id)))
+      .get();
+    if (existing) return { error: "That person is already on this session." };
+
+    const current = await db
+      .select({ sort: sessionParticipants.sort })
+      .from(sessionParticipants)
+      .where(eq(sessionParticipants.sessionId, sessionId))
+      .all();
+    await db.insert(sessionParticipants).values({
+      sessionId,
+      contactId: contact.id,
+      role: (ROLE_KEYS as readonly string[]).includes(role) ? (role as (typeof ROLE_KEYS)[number]) : "speaker",
+      inviteStatus: "invited",
+      sort: current.reduce((max, row) => Math.max(max, row.sort), -1) + 1,
+    });
+    await db.insert(eventContacts).values({ eventId, contactId: contact.id, kind: "speaker" }).onConflictDoNothing();
+    await db.update(sessions).set({ updatedAt: new Date() }).where(eq(sessions.id, sessionId));
+    return { error: null, notice: "Speaker added." };
+  }
+
+  if (intent === "remove-speaker") {
+    const participantId = Number(form.get("participantId") ?? 0);
+    await db
+      .delete(sessionParticipants)
+      .where(and(eq(sessionParticipants.id, participantId), eq(sessionParticipants.sessionId, sessionId)));
+    return { error: null, notice: "Speaker removed." };
+  }
+
+  if (intent !== "set-status") return { error: null };
 
   const statusId = Number(form.get("statusId") ?? 0);
   const status = await db
@@ -367,36 +431,100 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
 
           <Card className="p-4">
             <h2 className="text-sm font-semibold text-slate-900">Speakers</h2>
-            <ul className="mt-2 space-y-3">
-              {participants.map((p) => (
-                <li key={p.id}>
-                  <p className="text-sm font-medium text-slate-900">
-                    {p.name} <span className="font-normal text-slate-500">({ROLE_LABEL[p.role] ?? p.role})</span>
-                  </p>
-                  <p className="text-[13px] text-slate-500">
-                    {[p.title, p.company].filter(Boolean).join(", ")}
-                  </p>
-                  <p className="text-[13px] text-slate-500">{p.email}</p>
-                </li>
-              ))}
-            </ul>
+            {participants.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-500">Nobody is listed on this session yet.</p>
+            ) : (
+              <ul className="mt-2 space-y-3">
+                {participants.map((p) => (
+                  <li key={p.id}>
+                    <p className="text-sm font-medium text-slate-900">
+                      {p.name} <span className="font-normal text-slate-500">({ROLE_LABEL[p.role] ?? p.role})</span>
+                    </p>
+                    <p className="text-[13px] text-slate-500">{[p.title, p.company].filter(Boolean).join(", ")}</p>
+                    <p className="text-[13px] text-slate-500">{p.email}</p>
+                    <Form method="post" className="mt-0.5">
+                      <input type="hidden" name="participantId" value={p.id} />
+                      <button
+                        type="submit"
+                        name="intent"
+                        value="remove-speaker"
+                        className="text-[13px] font-medium text-slate-500 hover:text-rose-600"
+                      >
+                        Remove
+                      </button>
+                    </Form>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <Form method="post" className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+              <input type="hidden" name="intent" value="add-speaker" />
+              <label htmlFor="speaker-email" className="block text-[13px] font-medium text-slate-900">
+                Add a speaker
+              </label>
+              <input
+                id="speaker-email"
+                name="email"
+                type="email"
+                placeholder="speaker@example.com"
+                aria-label="Speaker email"
+                className={inputClass}
+              />
+              <div className="flex items-center gap-2">
+                <select name="role" defaultValue="speaker" aria-label="Role on this session" className={selectClass}>
+                  {ROLE_KEYS.map((key) => (
+                    <option key={key} value={key}>
+                      {ROLE_LABEL[key] ?? key}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit" className={buttonSecondary}>
+                  Add
+                </button>
+              </div>
+              <p className="text-[13px] text-slate-500">
+                Matched by email against{" "}
+                <Link to={`/admin/${params.eventId}/speakers`} className="font-medium text-accent hover:underline">
+                  Speakers
+                </Link>
+                .
+              </p>
+            </Form>
           </Card>
 
           <Card className="p-4">
             <h2 className="text-sm font-semibold text-slate-900">Files</h2>
             {files.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-500">No files.</p>
+              <p className="mt-2 text-sm text-slate-500">
+                No files.{" "}
+                <Link to={`/admin/${params.eventId}/content/requests`} className="font-medium text-accent hover:underline">
+                  Request one
+                </Link>
+              </p>
             ) : (
-              <ul className="mt-2 space-y-2">
+              <ul className="mt-2 divide-y divide-slate-100">
                 {files.map((file) => (
-                  <li key={file.id} className="text-sm">
-                    <a href={`/files/${file.id}`} className="font-medium text-accent hover:underline">
-                      {file.filename}
-                    </a>
-                    <span className="text-slate-500">
-                      {" "}
-                      v{file.version}, {Math.max(1, Math.round(file.size / 1024))} KB
-                    </span>
+                  <li key={file.id} className="py-2">
+                    <p className="text-sm">
+                      <a href={`/files/${file.id}`} className="font-medium text-accent hover:underline">
+                        {file.filename}
+                      </a>
+                      <span className="text-slate-500"> v{file.version}, {formatBytes(file.size)}</span>
+                    </p>
+                    <p className="text-[13px] text-slate-500">
+                      {file.requestTitle ?? "Attachment"}, {`${file.firstName ?? ""} ${file.lastName ?? ""}`.trim() || "Unknown"},{" "}
+                      {formatDateTime(file.createdAt, event.timezone)}
+                    </p>
+                    <div className="mt-1 flex items-center gap-3">
+                      <ApprovalBadge approval={file.approval} />
+                      <Link
+                        to={`/admin/${params.eventId}/content/uploads/${file.id}`}
+                        className="text-[13px] font-medium text-accent hover:underline"
+                      >
+                        Review
+                      </Link>
+                    </div>
                   </li>
                 ))}
               </ul>

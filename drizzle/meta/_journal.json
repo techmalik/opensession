@@ -15,6 +15,13 @@
       "when": 1786365168363,
       "tag": "0001_warm_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786374051814,
+      "tag": "0002_wet_thing",
+      "breakpoints": true
     }
   ]
 }

@@ -40,6 +40,7 @@ const NAV_GROUPS: { label: string | null; items: { to: string; label: string; en
       { to: "evaluations", label: "Evaluations" },
       { to: "agenda", label: "Agenda" },
       { to: "speakers", label: "Speakers" },
+      { to: "content", label: "Content" },
     ],
   },
   {

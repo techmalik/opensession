@@ -10,8 +10,10 @@ import { env } from "cloudflare:workers";
 interface Bindings {
   DB: D1Database;
   FILES?: R2Bucket;
+  AI?: { run: (model: string, input: Record<string, unknown>) => Promise<unknown> };
   SESSION_SECRET?: string;
   BREVO_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
   EMAIL_FROM?: string;
   EMAIL_FROM_NAME?: string;
   APP_BASE_URL?: string;

@@ -16,9 +16,19 @@ export default [
   // Speaker portal and evaluator dashboard. Both are signed-in surfaces with no
   // organizer navigation.
   route("portal", "routes/portal.tsx"),
+  route("portal/profile", "routes/portal.profile.tsx"),
+  route("portal/tasks", "routes/portal.tasks.tsx"),
+  route("portal/files", "routes/portal.files.tsx"),
+  route("portal/files/:requestId", "routes/portal.file.tsx"),
+  route("portal/schedule", "routes/portal.schedule.tsx"),
+  route("portal/schedule.ics", "routes/portal.schedule.ics.tsx"),
   route("portal/submissions/:sessionId", "routes/portal.submission.tsx"),
   route("review", "routes/review.tsx"),
   route("review/:assignmentId", "routes/review.assignment.tsx"),
+
+  // Public agenda. The full embed suite lands in Phase 5; this is the page the
+  // agenda publish action points at.
+  route("agenda/:eventSlug", "routes/agenda.public.tsx"),
 
   // Uploaded files, access-checked per requester.
   route("files/:uploadId", "routes/file.download.tsx"),
@@ -57,12 +67,29 @@ export default [
     route("evaluations/:planId/results", "routes/event.plan.results.tsx"),
     route("evaluations/:planId/results.csv", "routes/event.plan.results.export.tsx"),
 
-    // Phase 3 to 5 replace these. They exist now so the nav never dead-ends.
-    route("agenda", "routes/event.soon.tsx", { id: "event-agenda" }),
-    route("speakers", "routes/event.soon.tsx", { id: "event-speakers" }),
+    route("speakers", "routes/event.speakers.tsx"),
+    route("speakers/export.csv", "routes/event.speakers.export.tsx"),
+    route("speakers/import", "routes/event.speakers.import.tsx"),
+    route("speakers/new", "routes/event.speaker.new.tsx"),
+    route("speakers/email", "routes/event.speakers.email.tsx"),
+    route("speakers/:contactId", "routes/event.speaker.tsx"),
+
+    route("portals", "routes/event.portals.tsx"),
+
+    route("content", "routes/event.content.tsx"),
+    route("content/requests", "routes/event.content.requests.tsx"),
+    route("content/review", "routes/event.content.review.tsx"),
+    route("content/review/export.csv", "routes/event.content.export.tsx"),
+    route("content/review/export.zip", "routes/event.content.zip.tsx"),
+    route("content/uploads/:uploadId", "routes/event.content.upload.tsx"),
+
+    route("agenda", "routes/event.agenda.tsx"),
+    route("agenda/assist", "routes/event.agenda.assist.tsx"),
+
+    route("communications", "routes/event.communications.tsx"),
+
+    // Phase 5 replaces these. They exist now so the nav never dead-ends.
     route("contacts", "routes/event.soon.tsx", { id: "event-contacts" }),
-    route("portals", "routes/event.soon.tsx", { id: "event-portals" }),
-    route("communications", "routes/event.soon.tsx", { id: "event-communications" }),
     route("embeds", "routes/event.soon.tsx", { id: "event-embeds" }),
   ]),
 ] satisfies RouteConfig;
