@@ -321,20 +321,22 @@ export function groupByDay(list: PublicSession[], days: { value: string; label: 
     .filter((group) => group.sessions.length > 0);
 }
 
-/** Cache policy for every public widget response.
+/** Cache policy for every public response.
  *
  *  Embedded URLs carry ?v=<embed_cache_version>, so the version is part of the cache
- *  key: bumping it with "Refresh embeds" changes every snippet URL and misses both
- *  the edge cache and the browser cache. Those versioned URLs get the full hour.
+ *  key: "Refresh embeds" bumps it, every snippet URL changes, and both the edge and
+ *  the browser miss. Those versioned URLs are the ones an embed actually hits, and
+ *  they get the full hour.
  *
- *  A visitor browsing the widget directly (no ?v) gets a short cache instead. An
- *  hour-long cache on the canonical URL would make an organizer's edit look lost for
- *  an hour, which is worse than the extra origin hits. */
+ *  The canonical URL a visitor browses gets no-cache: still cacheable, but
+ *  revalidated every time. Measured reason, not caution: with a 60 second cache, a
+ *  session held from public seconds earlier was still being served from the browser
+ *  cache. A public page that contradicts the organizer's last action is worse than
+ *  the extra origin hits, and the origin is a Worker reading D1. */
 export function publicCacheHeaders(url: URL, extra: Record<string, string> = {}): Headers {
   const versioned = url.searchParams.has("v");
-  const maxAge = versioned ? 3600 : 60;
   return new Headers({
-    "Cache-Control": `public, max-age=${maxAge}, s-maxage=${maxAge}`,
+    "Cache-Control": versioned ? "public, max-age=3600, s-maxage=3600" : "public, no-cache",
     ...extra,
   });
 }
