@@ -185,11 +185,11 @@ function TaxonomySection({
       ) : (
         <ul className="divide-y divide-slate-100">
           {items.map((item, index) => (
-            <li key={item.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50">
-              <Form method="post" className="flex flex-1 items-center gap-2">
+            <li key={item.id} className="flex flex-wrap items-center gap-2 px-3 py-1.5 hover:bg-slate-50">
+              <Form method="post" className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 <input type="hidden" name="kind" value={kind} />
                 <input type="hidden" name="id" value={item.id} />
-                <input name="name" defaultValue={item.name} aria-label={`${title} name`} className={`${inputClass} flex-1`} />
+                <input name="name" defaultValue={item.name} aria-label={`${title} name`} className={`${inputClass} min-w-40 flex-1`} />
                 {numericLabel ? (
                   <input
                     name="numeric"
@@ -198,7 +198,7 @@ function TaxonomySection({
                     defaultValue={item.numeric ?? ""}
                     aria-label={numericLabel}
                     placeholder={numericLabel}
-                    className={`${inputClass} w-28`}
+                    className={`${inputClass} w-28 shrink-0`}
                   />
                 ) : null}
                 <button type="submit" name="intent" value="rename" className={buttonSecondary}>
@@ -253,11 +253,11 @@ function TaxonomySection({
         </ul>
       )}
 
-      <Form method="post" className="flex items-center gap-2 border-t border-slate-200 px-3 py-2.5">
+      <Form method="post" className="flex flex-wrap items-center gap-2 border-t border-slate-200 px-3 py-2.5">
         <input type="hidden" name="kind" value={kind} />
-        <input name="name" placeholder={`Add ${title.toLowerCase().replace(/s$/, "")}`} aria-label={`New ${title}`} className={`${inputClass} flex-1`} />
+        <input name="name" placeholder={`Add ${title.toLowerCase().replace(/s$/, "")}`} aria-label={`New ${title}`} className={`${inputClass} min-w-40 flex-1`} />
         {numericLabel ? (
-          <input name="numeric" type="number" min={0} placeholder={numericLabel} aria-label={numericLabel} className={`${inputClass} w-28`} />
+          <input name="numeric" type="number" min={0} placeholder={numericLabel} aria-label={numericLabel} className={`${inputClass} w-28 shrink-0`} />
         ) : null}
         <button type="submit" name="intent" value="create" className={buttonPrimary}>
           Add

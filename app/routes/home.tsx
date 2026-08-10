@@ -51,6 +51,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function Home({ loaderData }: Route.ComponentProps) {
   const { user, event, openForm } = loaderData;
   const closesIn = daysUntil(openForm?.closesAt ?? null);
+  // daysUntil returns 0 only for past dates (a close later today still counts as 1).
+  const formClosed = openForm?.closesAt != null && closesIn === 0;
 
   return (
     <main className="mx-auto w-full max-w-[720px] px-6 py-16">
@@ -76,14 +78,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
           {event.description ? <p className="mt-6 text-base leading-relaxed text-slate-900">{event.description}</p> : null}
 
-          {openForm ? (
+          {openForm && !formClosed ? (
             <div className="mt-8 rounded-lg border border-slate-200 p-4">
               <h2 className="text-base font-semibold text-slate-900">{openForm.name}</h2>
               <p className="mt-1 text-base text-slate-500">
                 {openForm.closesAt
-                  ? closesIn === 0
-                    ? `Closed ${formatDate(openForm.closesAt, event.timezone)}`
-                    : `Closes ${formatDate(openForm.closesAt, event.timezone)}, ${closesIn} days left`
+                  ? `Closes ${formatDate(openForm.closesAt, event.timezone)}, ${closesIn} days left`
                   : "Open for submissions"}
               </p>
               <Link
@@ -93,6 +93,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 Submit a talk
               </Link>
             </div>
+          ) : openForm && formClosed ? (
+            <p className="mt-8 text-base text-slate-500">
+              Form closed {formatDate(openForm.closesAt, event.timezone)}.
+            </p>
           ) : (
             <p className="mt-8 text-base text-slate-500">Submissions are not open right now.</p>
           )}
@@ -113,11 +117,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       )}
 
       <nav className="mt-10 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-200 pt-6 text-base">
-        {user ? (
-          <Link to={user.role === "speaker" ? "/portal" : "/admin"} className="font-medium text-accent hover:underline">
-            {user.role === "speaker" ? "Speaker portal" : "Organizer dashboard"}
+        {user && (user.role === "admin" || user.role === "organizer") ? (
+          <Link to="/admin" className="font-medium text-accent hover:underline">
+            Organizer dashboard
           </Link>
-        ) : (
+        ) : user ? null : (
           <Link to="/login" className="font-medium text-accent hover:underline">
             Organizer sign in
           </Link>

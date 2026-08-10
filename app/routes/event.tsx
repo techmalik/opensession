@@ -63,7 +63,7 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
       <div className="flex">
         <aside className="fixed inset-y-0 left-0 flex w-[232px] flex-col border-r border-slate-200 bg-white">
           <div className="border-b border-slate-200 p-3">
-            <details className="group relative">
+            <details key={event.id} className="group relative">
               <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-1.5 hover:bg-slate-50">
                 <span className="truncate text-sm font-medium text-slate-900">{event.name}</span>
                 <span className="ml-2 shrink-0 text-slate-400" aria-hidden="true">

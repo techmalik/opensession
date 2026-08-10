@@ -11,15 +11,18 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: "Sign in to OpenSession" }];
 }
 
-/** Where to land after signing in, by role. Speakers go to the landing page until
- *  Phase 3 builds /portal. */
+/** Where to land after signing in, by role. Speakers and evaluators go to the
+ *  landing page until Phase 2 builds the reviewer dashboard and Phase 3 the portal;
+ *  sending them to /admin would greet them with a 403. */
 function landingFor(role: string): string {
-  return role === "speaker" ? "/" : "/admin";
+  return role === "admin" || role === "organizer" ? "/admin" : "/";
 }
 
 function safeNext(raw: string | null): string | null {
-  // Only same-origin paths. An absolute URL here would be an open redirect.
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
+  // Only same-origin paths. An absolute URL would be an open redirect, and so would
+  // "//host" or "/\\host": browsers normalize backslashes to forward slashes.
+  if (!raw || !raw.startsWith("/")) return null;
+  if (raw.startsWith("//") || raw.includes("\\")) return null;
   return raw;
 }
 
@@ -89,7 +92,7 @@ export default function Login({ loaderData, actionData }: Route.ComponentProps) 
           <input id="password" name="password" type="password" autoComplete="current-password" className={inputClass} required />
         </Field>
 
-        <button type="submit" className={`${buttonPrimary} w-full`} disabled={submitting}>
+        <button type="submit" className={`${buttonPrimary} h-11 w-full`} disabled={submitting}>
           {submitting ? "Signing in" : "Sign in"}
         </button>
       </Form>

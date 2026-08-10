@@ -14,7 +14,7 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await getUser(request);
   // Signup is open and needs no email verification: the eval agent signs itself up.
-  if (user) throw redirect(user.role === "speaker" ? "/" : "/admin");
+  if (user) throw redirect(user.role === "admin" || user.role === "organizer" ? "/admin" : "/");
   return null;
 }
 
@@ -134,7 +134,7 @@ export default function Signup({ actionData }: Route.ComponentProps) {
           </label>
         </fieldset>
 
-        <button type="submit" className={`${buttonPrimary} w-full`} disabled={submitting}>
+        <button type="submit" className={`${buttonPrimary} h-11 w-full`} disabled={submitting}>
           {submitting ? "Creating account" : "Create account"}
         </button>
       </Form>

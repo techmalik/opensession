@@ -1,10 +1,10 @@
 import { Form, Link } from "react-router";
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import type { Route } from "./+types/admin";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { formatDateRange } from "../lib/format";
-import { events, sessions } from "../../database/schema";
+import { events } from "../../database/schema";
 import {
   Card,
   EmptyState,
@@ -54,7 +54,26 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { user, rows, q, status };
 }
 
-export default function AdminEvents({ loaderData }: Route.ComponentProps) {
+export async function action({ request }: Route.ActionArgs) {
+  await requireOrganizer(request);
+  const form = await request.formData();
+  const intent = String(form.get("intent") ?? "");
+  const ids = form.getAll("ids").map(Number).filter((n) => Number.isInteger(n) && n > 0);
+
+  if (ids.length === 0) return { flash: "Select at least one event first." };
+  if (intent !== "archive" && intent !== "activate") return { flash: null };
+
+  const db = getDb();
+  await db
+    .update(events)
+    .set({ status: intent === "archive" ? "archived" : "active" })
+    .where(inArray(events.id, ids));
+
+  const noun = ids.length === 1 ? "1 event" : `${ids.length} events`;
+  return { flash: intent === "archive" ? `${noun} archived.` : `${noun} made active.` };
+}
+
+export default function AdminEvents({ loaderData, actionData }: Route.ComponentProps) {
   const { user, rows, q, status } = loaderData;
 
   return (
@@ -83,6 +102,12 @@ export default function AdminEvents({ loaderData }: Route.ComponentProps) {
             </Link>
           }
         />
+
+        {actionData?.flash ? (
+          <div role="status" className="mb-4 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900">
+            {actionData.flash}
+          </div>
+        ) : null}
 
         <Card>
           <Form method="get" className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2.5">
@@ -124,36 +149,59 @@ export default function AdminEvents({ loaderData }: Route.ComponentProps) {
               }
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-[13px]">
-                <thead className="sticky top-0 bg-white">
-                  <tr className="border-b border-slate-200 text-left text-slate-500">
-                    <th scope="col" className="px-3 py-2 font-medium">Event</th>
-                    <th scope="col" className="px-3 py-2 font-medium">Dates</th>
-                    <th scope="col" className="px-3 py-2 font-medium">Location</th>
-                    <th scope="col" className="px-3 py-2 font-medium">Status</th>
-                    <th scope="col" className="px-3 py-2 text-right font-medium">Submissions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((event) => (
-                    <tr key={event.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                      <td className="h-10 px-3">
-                        <Link to={`/admin/${event.id}`} className="font-medium text-slate-900 hover:text-accent">
-                          {event.name}
-                        </Link>
-                      </td>
-                      <td className="px-3 text-slate-500">
-                        {formatDateRange(event.startsAt, event.endsAt, event.timezone)}
-                      </td>
-                      <td className="px-3 text-slate-500">{event.location ?? ""}</td>
-                      <td className="px-3 text-slate-500 capitalize">{event.status}</td>
-                      <td className="px-3 text-right tabular-nums text-slate-900">{event.submissionCount}</td>
+            <Form method="post">
+              <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2">
+                <span className="text-[13px] text-slate-500">With selected:</span>
+                <button type="submit" name="intent" value="archive" className={buttonSecondary}>
+                  Archive
+                </button>
+                <button type="submit" name="intent" value="activate" className={buttonSecondary}>
+                  Make active
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead className="sticky top-0 bg-white">
+                    <tr className="border-b border-slate-200 text-left text-slate-500">
+                      <th scope="col" className="w-10 px-3 py-2">
+                        <span className="sr-only">Select</span>
+                      </th>
+                      <th scope="col" className="px-3 py-2 font-medium">Event</th>
+                      <th scope="col" className="px-3 py-2 font-medium">Dates</th>
+                      <th scope="col" className="px-3 py-2 font-medium">Location</th>
+                      <th scope="col" className="px-3 py-2 font-medium">Status</th>
+                      <th scope="col" className="px-3 py-2 text-right font-medium">Submissions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {rows.map((event) => (
+                      <tr key={event.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                        <td className="px-3">
+                          <input
+                            type="checkbox"
+                            name="ids"
+                            value={event.id}
+                            aria-label={`Select ${event.name}`}
+                            className="accent-accent"
+                          />
+                        </td>
+                        <td className="h-10 px-3">
+                          <Link to={`/admin/${event.id}`} className="font-medium text-slate-900 hover:text-accent">
+                            {event.name}
+                          </Link>
+                        </td>
+                        <td className="px-3 text-slate-500">
+                          {formatDateRange(event.startsAt, event.endsAt, event.timezone)}
+                        </td>
+                        <td className="px-3 text-slate-500">{event.location ?? ""}</td>
+                        <td className="px-3 text-slate-500 capitalize">{event.status}</td>
+                        <td className="px-3 text-right tabular-nums text-slate-900">{event.submissionCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Form>
           )}
         </Card>
       </main>
