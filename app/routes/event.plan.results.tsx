@@ -93,6 +93,7 @@ export default function PlanResults({ loaderData, params }: Route.ComponentProps
                       {criterion.weight > 1 ? ` (x${criterion.weight})` : ""}
                     </th>
                   ))}
+                  <th scope="col" className="px-3 py-2 font-medium">Recused</th>
                   <th scope="col" className="px-3 py-2 text-right font-medium">
                     <Link to={`?dir=${dir === "desc" ? "asc" : "desc"}`} className="hover:text-slate-900">
                       Avg score {dir === "desc" ? "v" : "^"}
@@ -121,8 +122,18 @@ export default function PlanResults({ loaderData, params }: Route.ComponentProps
                         {row.criterionAvgs[criterion.id] != null ? formatScore(row.criterionAvgs[criterion.id]) : ""}
                       </td>
                     ))}
+                    <td className="max-w-[180px] px-3">
+                      {row.recusedBy.length === 0 ? (
+                        <span className="text-slate-400">-</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-amber-700" title={row.recusedBy.join(", ")}>
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-amber-600" aria-hidden="true" />
+                          <span className="truncate">{row.recusedBy.join(", ")}</span>
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 text-right font-medium tabular-nums text-slate-900">
-                      {row.avg != null ? formatScore(row.avg) : ""}
+                      {row.avg != null ? formatScore(row.avg) : <span className="font-normal text-slate-400">no score</span>}
                     </td>
                   </tr>
                 ))}

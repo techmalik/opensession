@@ -10,6 +10,20 @@ import { slotOffsets, slotTimeValue } from "./agenda-grid";
 
 export type { AssistSource } from "./labels";
 
+/** Workers AI text model. Cloudflare deprecates these on a schedule, so it lives in
+ *  one place: `npx wrangler ai models` lists what is current. */
+export const WORKERS_AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+
+/** Models do not agree on a response shape: some return a string, some a
+ *  {response: string}, some a {response: object} once they decide to be helpful and
+ *  parse their own JSON. Everything downstream wants text. */
+export function normalizeAiOutput(output: unknown): string | null {
+  if (typeof output === "string") return output;
+  const response = (output as { response?: unknown } | null)?.response;
+  if (response == null) return null;
+  return typeof response === "string" ? response : JSON.stringify(response);
+}
+
 export interface AssistResult {
   source: AssistSource;
   placements: Placement[];
@@ -63,7 +77,8 @@ function buildPrompt(data: AgendaData): string {
   ].join("\n\n");
 }
 
-function extractJson(text: string): unknown {
+function extractJson(text: unknown): unknown {
+  if (typeof text !== "string") return null;
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start === -1 || end <= start) return null;
@@ -138,12 +153,13 @@ async function runWorkersAi(prompt: string): Promise<string | null> {
   const ai = aiBinding();
   if (!ai) return null;
   try {
-    const output = (await ai.run("@cf/meta/llama-3.1-8b-instruct", {
+    const output = (await ai.run(WORKERS_AI_MODEL, {
       messages: [{ role: "user", content: prompt }],
       max_tokens: 1024,
-    })) as { response?: string };
-    return typeof output?.response === "string" ? output.response : null;
-  } catch {
+    })) as { response?: unknown };
+    return normalizeAiOutput(output);
+  } catch (err) {
+    console.warn("workers ai agenda assist failed", String(err).slice(0, 200));
     return null;
   }
 }

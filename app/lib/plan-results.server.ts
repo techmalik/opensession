@@ -4,7 +4,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "./db.server";
 import { getCriteria, reviewScore, type CriterionDef } from "./evals.server";
-import { evalAssignments, evalScores, sessions, statuses, tracks } from "../../database/schema";
+import { evalAssignments, evalScores, sessions, statuses, tracks, users } from "../../database/schema";
 
 export interface PlanResultRow {
   sessionId: number;
@@ -16,6 +16,8 @@ export interface PlanResultRow {
   reviewCount: number;
   avg: number | null;
   criterionAvgs: Record<number, number>;
+  /** ABS-12: evaluators who declared a conflict. Excluded from every number above. */
+  recusedBy: string[];
 }
 
 export async function loadPlanResults(
@@ -27,20 +29,39 @@ export async function loadPlanResults(
   const criteria = await getCriteria(planId);
   const criteriaById = new Map(criteria.map((c) => [c.id, { kind: c.kind, weight: c.weight }]));
 
-  const done = await db
-    .select({ id: evalAssignments.id, sessionId: evalAssignments.sessionId })
+  // Both states, in one pass: completed reviews make the numbers, recusals explain
+  // a thin or missing one. A submission everybody recused from still gets a row.
+  const assignments = await db
+    .select({
+      id: evalAssignments.id,
+      sessionId: evalAssignments.sessionId,
+      status: evalAssignments.status,
+      evaluatorName: users.name,
+    })
     .from(evalAssignments)
-    .where(and(eq(evalAssignments.planId, planId), eq(evalAssignments.status, "done")))
+    .leftJoin(users, eq(evalAssignments.evaluatorUserId, users.id))
+    .where(
+      and(
+        eq(evalAssignments.planId, planId),
+        inArray(evalAssignments.status, ["done", "recused"])
+      )
+    )
     .all();
-  if (done.length === 0) return { rows: [], criteria };
 
-  const scoreRows = await db
-    .select({ assignmentId: evalScores.assignmentId, criterionId: evalScores.criterionId, score: evalScores.score })
-    .from(evalScores)
-    .where(inArray(evalScores.assignmentId, done.map((a) => a.id)))
-    .all();
+  const done = assignments.filter((a) => a.status === "done");
+  const recused = assignments.filter((a) => a.status === "recused");
+  if (assignments.length === 0) return { rows: [], criteria };
 
-  const sessionIds = [...new Set(done.map((a) => a.sessionId))];
+  const scoreRows =
+    done.length > 0
+      ? await db
+          .select({ assignmentId: evalScores.assignmentId, criterionId: evalScores.criterionId, score: evalScores.score })
+          .from(evalScores)
+          .where(inArray(evalScores.assignmentId, done.map((a) => a.id)))
+          .all()
+      : [];
+
+  const sessionIds = [...new Set(assignments.map((a) => a.sessionId))];
   const sessionRows = await db
     .select({
       id: sessions.id,
@@ -86,6 +107,7 @@ export async function loadPlanResults(
       reviewCount: assignmentIds.length,
       avg: perAssignment.length > 0 ? perAssignment.reduce((sum, v) => sum + v, 0) / perAssignment.length : null,
       criterionAvgs,
+      recusedBy: recused.filter((a) => a.sessionId === session.id).map((a) => a.evaluatorName ?? "Unknown"),
     };
   });
 

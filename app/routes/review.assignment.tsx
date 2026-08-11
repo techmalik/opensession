@@ -120,7 +120,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       status: plan.status,
       dueAt: plan.dueAt,
     },
-    assignment: { id: assignment.id, status: assignment.status },
+    assignment: { id: assignment.id, status: assignment.status, recusalReason: assignment.recusalReason },
     submission: {
       id: session.id,
       friendlyId: session.friendlyId,
@@ -157,6 +157,26 @@ export async function action({ request, params }: Route.ActionArgs) {
   const form = await request.formData();
   const comment = String(form.get("comment") ?? "").trim();
   const now = new Date();
+
+  // ABS-12: a conflict of interest. The assignment stays on the record so the
+  // organizer can see who stepped back, but any score already entered is dropped
+  // and it leaves this reviewer's queue.
+  if (String(form.get("intent") ?? "") === "undo-recuse") {
+    await db
+      .update(evalAssignments)
+      .set({ status: "pending", recusalReason: null, recusedAt: null })
+      .where(eq(evalAssignments.id, assignment.id));
+    return { errors: {} };
+  }
+
+  if (String(form.get("intent") ?? "") === "recuse") {
+    await db.delete(evalScores).where(eq(evalScores.assignmentId, assignment.id));
+    await db
+      .update(evalAssignments)
+      .set({ status: "recused", recusalReason: String(form.get("reason") ?? "").trim() || null, recusedAt: now })
+      .where(eq(evalAssignments.id, assignment.id));
+    throw redirect("/review?recused=1");
+  }
 
   const criteria = await getCriteria(plan.id);
   const errors: Record<string, string> = {};
@@ -220,6 +240,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function ReviewAssignment({ loaderData, actionData }: Route.ComponentProps) {
   const { user, event, plan, assignment, submission, fields, answers, participants, criteria, existing, saved } = loaderData;
+  const recused = assignment.status === "recused";
   const errors = actionData?.errors ?? {};
   const navigation = useNavigation();
   const busy = navigation.state === "submitting";
@@ -398,11 +419,58 @@ export default function ReviewAssignment({ loaderData, actionData }: Route.Compo
                 <p className="text-[13px] text-slate-500">Visible to the organizers alongside your scores.</p>
               </div>
 
-              <button type="submit" className={`${buttonPrimary} w-full`} disabled={busy || plan.status === "closed"}>
+              <button type="submit" className={`${buttonPrimary} w-full`} disabled={busy || plan.status === "closed" || recused}>
                 {assignment.status === "done" ? "Update review" : "Submit review"}
               </button>
               {plan.status === "closed" ? <p className="text-[13px] text-slate-500">This round is closed.</p> : null}
             </Form>
+          </Card>
+
+          {/* ABS-12: recusal. Deliberately below the scoring form and styled as a
+              quiet secondary action, because it is the rarer path. */}
+          <Card className="mt-4 p-4">
+            <h2 className="text-sm font-semibold text-slate-900">Conflict of interest</h2>
+            {recused ? (
+              <>
+                <p className="mt-1 text-[13px] text-slate-900">
+                  You recused yourself from this submission. It is out of your queue and excluded from the score.
+                </p>
+                {assignment.recusalReason ? (
+                  <p className="mt-1 text-[13px] text-slate-500">{assignment.recusalReason}</p>
+                ) : null}
+                <Form method="post" className="mt-3">
+                  <input type="hidden" name="intent" value="undo-recuse" />
+                  <button type="submit" className="text-[13px] font-medium text-slate-500 hover:text-slate-900">
+                    Undo, I can review this
+                  </button>
+                </Form>
+              </>
+            ) : (
+              <Form method="post" className="mt-2 space-y-2">
+                <input type="hidden" name="intent" value="recuse" />
+                <p className="text-[13px] text-slate-500">
+                  If you work with the speaker, or stand to gain from the outcome, recuse yourself. The submission leaves
+                  your queue and your score is left out of its average. The organizers see that you recused, not why,
+                  unless you say.
+                </p>
+                <label htmlFor="reason" className="sr-only">
+                  Reason, optional
+                </label>
+                <input
+                  id="reason"
+                  name="reason"
+                  placeholder="Reason, optional"
+                  className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-accent"
+                />
+                <button
+                  type="submit"
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-white px-3 text-sm font-medium text-amber-700 hover:bg-amber-50"
+                  disabled={busy}
+                >
+                  I have a conflict, recuse me
+                </button>
+              </Form>
+            )}
           </Card>
         </div>
       </main>

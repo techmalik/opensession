@@ -102,6 +102,30 @@ export async function action({ request, params }: Route.ActionArgs) {
   const ids = form.getAll("ids").map(Number).filter(Number.isInteger);
   if (ids.length === 0) return { error: "Select at least one submission." };
 
+  // ABS-14 in bulk: a first AI pass over a whole shortlist.
+  if (intent === "bulk-ai-review") {
+    const { runAiReview } = await import("../lib/ai-reviews.server");
+    const owned = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.eventId, eventId), inArray(sessions.id, ids)))
+      .all();
+    // Capped: each submission is three model calls, and a runaway selection would
+    // sit on the request until it times out.
+    const batch = owned.slice(0, 10);
+    let done = 0;
+    for (const row of batch) {
+      const result = await runAiReview(eventId, row.id);
+      if (result) done += 1;
+    }
+    return {
+      error: null,
+      notice:
+        `Ran AI review on ${done} ${done === 1 ? "submission" : "submissions"}.` +
+        (owned.length > batch.length ? ` ${owned.length - batch.length} were left: run at most 10 at a time.` : ""),
+    };
+  }
+
   // CNT-12 bulk gate: hold or publish the selection without touching its status.
   if (intent === "bulk-hold" || intent === "bulk-publish") {
     const held = intent === "bulk-hold";
@@ -414,6 +438,10 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
                 </button>
                 <button type="submit" name="intent" value="bulk-publish" className={buttonSecondary}>
                   Publish to public
+                </button>
+                <span className="mx-1 text-slate-300">|</span>
+                <button type="submit" name="intent" value="bulk-ai-review" className={buttonSecondary}>
+                  Run AI review
                 </button>
               </div>
             ) : null}

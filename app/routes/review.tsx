@@ -91,6 +91,9 @@ export default function Review({ loaderData }: Route.ComponentProps) {
   }
 
   const firstPending = assignments.find((a) => a.status === "pending" && a.planStatus === "active");
+  for (const list of byPlan.values()) {
+    list.sort((a, b) => Number(a.status === "recused") - Number(b.status === "recused"));
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -103,7 +106,11 @@ export default function Review({ loaderData }: Route.ComponentProps) {
             <p className="mt-1 text-sm text-slate-500">
               {assignments.length === 0
                 ? "Nothing is assigned to you yet."
-                : `${assignments.filter((a) => a.status === "done").length} of ${assignments.length} reviews completed.`}
+                : `${assignments.filter((a) => a.status === "done").length} of ${assignments.filter((a) => a.status !== "recused").length} reviews completed${
+                    assignments.some((a) => a.status === "recused")
+                      ? `, ${assignments.filter((a) => a.status === "recused").length} recused`
+                      : ""
+                  }.`}
             </p>
           </div>
           {firstPending ? (
@@ -138,7 +145,10 @@ export default function Review({ loaderData }: Route.ComponentProps) {
                     </p>
                   </div>
                   <p className="text-[13px] tabular-nums text-slate-500">
-                    {list.length} assigned, {done} completed
+                    {list.filter((a) => a.status !== "recused").length} assigned, {done} completed
+                    {list.some((a) => a.status === "recused")
+                      ? `, ${list.filter((a) => a.status === "recused").length} recused`
+                      : ""}
                   </p>
                 </div>
                 <ul className="divide-y divide-slate-100">
@@ -161,6 +171,16 @@ export default function Review({ loaderData }: Route.ComponentProps) {
                           ) : null}
                           <Link to={`/review/${assignment.id}`} className="font-medium text-accent hover:underline">
                             Edit
+                          </Link>
+                        </p>
+                      ) : assignment.status === "recused" ? (
+                        <p className="flex items-center gap-2 text-[13px]">
+                          <span className="inline-flex items-center gap-1.5 text-amber-700">
+                            <span className="h-2 w-2 rounded-full bg-amber-600" aria-hidden="true" />
+                            Recused, conflict of interest
+                          </span>
+                          <Link to={`/review/${assignment.id}`} className="font-medium text-slate-500 hover:text-slate-900">
+                            Undo
                           </Link>
                         </p>
                       ) : (

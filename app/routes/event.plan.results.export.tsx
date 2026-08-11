@@ -35,6 +35,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       "reviews",
       ...numericCriteria.map((c) => `${c.label.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_avg`),
       "avg_score",
+      "recused_by",
     ],
     rows.map((row) => [
       row.friendlyId,
@@ -44,6 +45,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       row.reviewCount,
       ...numericCriteria.map((c) => (row.criterionAvgs[c.id] != null ? row.criterionAvgs[c.id].toFixed(2) : "")),
       row.avg != null ? row.avg.toFixed(2) : "",
+      row.recusedBy.join("; "),
     ])
   );
 

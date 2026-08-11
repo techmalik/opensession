@@ -8,6 +8,8 @@ import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { getFields, withColumnFallbacks, type FieldDef } from "../lib/cfp.server";
 import { ensureBaseRevision, listRevisions, recordRevision, restoreRevision } from "../lib/revisions.server";
+import { clearAiReviews, listAiReviews, runAiReview } from "../lib/ai-reviews.server";
+import { REVIEW_SOURCE_LABEL } from "../lib/labels";
 import { getCriteria, reviewScore, type CriterionDef } from "../lib/evals.server";
 import { formatBytes, formatDateTime, formatScore } from "../lib/format";
 import { ROLE_LABEL } from "../lib/labels";
@@ -199,9 +201,19 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     .all();
 
   const revisions = await listRevisions(sessionId);
+  const aiRows = await listAiReviews(sessionId);
 
   return {
     event,
+    aiReviews: aiRows.map((row) => ({
+      id: row.id,
+      personaLabel: row.personaLabel,
+      score: row.score,
+      reviewText: row.reviewText,
+      sourceLabel: REVIEW_SOURCE_LABEL[row.source] ?? "Built-in heuristic",
+      createdAt: row.createdAt,
+    })),
+    aiAvg: aiRows.length > 0 ? aiRows.reduce((sum, row) => sum + row.score, 0) / aiRows.length : null,
     revisions: revisions.map((row) => ({
       id: row.id,
       version: row.version,
@@ -304,6 +316,23 @@ export async function action({ request, params }: Route.ActionArgs) {
     return { error: null, notice: "Session content saved. The previous version is in the change history." };
   }
 
+  // ABS-14: a first pass from three AI personas. Never folded into the human
+  // average: it sits in its own panel with its own number.
+  if (intent === "run-ai-review") {
+    const result = await runAiReview(eventId, sessionId);
+    if (!result) return { error: "That submission could not be read.", notice: null };
+    const { REVIEW_SOURCE_LABEL: labels } = await import("../lib/labels");
+    return {
+      error: null,
+      notice: `AI review complete: ${result.created} personas via ${labels[result.source] ?? result.source}.`,
+    };
+  }
+
+  if (intent === "clear-ai-review") {
+    await clearAiReviews(sessionId);
+    return { error: null, notice: "AI reviews cleared." };
+  }
+
   if (intent === "restore-revision") {
     const revisionId = Number(form.get("revisionId") ?? 0);
     const restored = await restoreRevision(eventId, sessionId, revisionId, { id: user.id, name: user.name });
@@ -389,7 +418,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function SubmissionDetail({ loaderData, actionData, params }: Route.ComponentProps) {
-  const { event, session, revisions, fields, answers, statusRows, currentStatus, participants, evaluations, scoreAvg, scoreCount, files } =
+  const { event, session, revisions, aiReviews, aiAvg, fields, answers, statusRows, currentStatus, participants, evaluations, scoreAvg, scoreCount, files } =
     loaderData;
 
   const sessionFields = fields.filter((f) => f.section === "session");
@@ -513,6 +542,57 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
           </Card>
 
           <Card className="p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">AI reviews</h2>
+                <p className="mt-0.5 text-[13px] text-slate-500">
+                  A first pass from three personas. Advisory only: these never enter the committee average.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {aiAvg != null ? (
+                  <p className="text-[13px] text-slate-500">
+                    AI average <span className="font-medium tabular-nums text-slate-900">{formatScore(aiAvg)}</span> / 5
+                  </p>
+                ) : null}
+                <Form method="post">
+                  <button type="submit" name="intent" value="run-ai-review" className={buttonSecondary}>
+                    {aiReviews.length > 0 ? "Re-run AI review" : "Run AI review"}
+                  </button>
+                </Form>
+              </div>
+            </div>
+
+            {aiReviews.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-500">
+                No AI pass yet. Running one scores this abstract from three angles and writes the reasoning here.
+              </p>
+            ) : (
+              <>
+                <ul className="mt-3 divide-y divide-slate-100">
+                  {aiReviews.map((review) => (
+                    <li key={review.id} className="py-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-900">
+                          {review.personaLabel}
+                          <span className="ml-2 text-[13px] font-normal text-slate-500">{review.sourceLabel}</span>
+                        </p>
+                        <p className="text-sm tabular-nums text-slate-900">{review.score} / 5</p>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-900">{review.reviewText}</p>
+                    </li>
+                  ))}
+                </ul>
+                <Form method="post" className="mt-2">
+                  <button type="submit" name="intent" value="clear-ai-review" className="text-[13px] font-medium text-slate-500 hover:text-rose-600">
+                    Clear AI reviews
+                  </button>
+                </Form>
+              </>
+            )}
+          </Card>
+
+          <Card className="p-4">
             <div className="flex items-baseline justify-between">
               <h2 className="text-sm font-semibold text-slate-900">Evaluations</h2>
               {scoreAvg != null ? (
@@ -544,6 +624,11 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
                       {evaluation.status === "done" ? (
                         <p className="text-sm tabular-nums text-slate-900">
                           {evaluation.score != null ? `${formatScore(evaluation.score)} / 5` : "Scored"}
+                        </p>
+                      ) : evaluation.status === "recused" ? (
+                        <p className="inline-flex items-center gap-1.5 text-[13px] text-amber-700">
+                          <span className="h-2 w-2 rounded-full bg-amber-600" aria-hidden="true" />
+                          Recused, not counted
                         </p>
                       ) : (
                         <p className="text-[13px] text-slate-500">Pending</p>

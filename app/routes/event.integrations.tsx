@@ -166,6 +166,7 @@ export default function Integrations({ loaderData, actionData, params }: Route.C
           { to: `${base}/settings`, label: "Event" },
           { to: `${base}/settings/taxonomy`, label: "Tracks and formats" },
           { to: `${base}/settings/integrations`, label: "Integrations" },
+          { to: `${base}/settings/api`, label: "API" },
         ]}
         current={`${base}/settings/integrations`}
       />

@@ -93,6 +93,7 @@ export default function EventSettings({ loaderData, actionData, params }: Route.
           { to: `/admin/${params.eventId}/settings`, label: "Event" },
           { to: `/admin/${params.eventId}/settings/taxonomy`, label: "Tracks and formats" },
           { to: `/admin/${params.eventId}/settings/integrations`, label: "Integrations" },
+          { to: `/admin/${params.eventId}/settings/api`, label: "API" },
         ]}
         current={`/admin/${params.eventId}/settings`}
       />

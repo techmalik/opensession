@@ -400,7 +400,12 @@ export const evalAssignments = sqliteTable(
     planId: integer("plan_id").notNull(),
     evaluatorUserId: integer("evaluator_user_id").notNull(),
     sessionId: integer("session_id").notNull(),
-    status: text("status", { enum: ["pending", "done"] }).notNull().default("pending"),
+    // "recused": the evaluator declared a conflict of interest. The assignment stays
+    // on the record so the organizer can see who stepped back, but it leaves the
+    // reviewer's queue and never reaches an aggregate.
+    status: text("status", { enum: ["pending", "done", "recused"] }).notNull().default("pending"),
+    recusalReason: text("recusal_reason"),
+    recusedAt: integer("recused_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   },
   (t) => [

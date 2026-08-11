@@ -58,8 +58,18 @@ export default [
   // Uploaded files, access-checked per requester.
   route("files/:uploadId", "routes/file.download.tsx"),
 
-  // Phase 5 fills this in with the real endpoint reference.
   route("docs/api", "routes/docs.api.tsx"),
+
+  // Public API. Token auth via x-access-token, JSON in and out, no session cookie.
+  route("api/v1/events", "routes/api.events.tsx"),
+  route("api/v1/event/:eventId", "routes/api.event.tsx"),
+  route("api/v1/event/:eventId/sessions", "routes/api.sessions.tsx"),
+  route("api/v1/event/:eventId/sessions/:sessionId", "routes/api.session.tsx"),
+  route("api/v1/event/:eventId/contacts", "routes/api.taxonomy.tsx", { id: "api-contacts" }),
+  route("api/v1/event/:eventId/statuses", "routes/api.taxonomy.tsx", { id: "api-statuses" }),
+  route("api/v1/event/:eventId/tracks", "routes/api.taxonomy.tsx", { id: "api-tracks" }),
+  route("api/v1/event/:eventId/formats", "routes/api.taxonomy.tsx", { id: "api-formats" }),
+  route("api/v1/event/:eventId/rooms", "routes/api.taxonomy.tsx", { id: "api-rooms" }),
 
   // Speaker CRM: the organization-level contact database. Deliberately outside
   // /admin/:eventId, because it belongs to the org and not to one event.
@@ -97,6 +107,7 @@ export default [
     route("settings", "routes/event.settings.tsx"),
     route("settings/taxonomy", "routes/event.taxonomy.tsx"),
     route("settings/integrations", "routes/event.integrations.tsx"),
+    route("settings/api", "routes/event.api.tsx"),
 
     route("submissions", "routes/event.submissions.tsx"),
     route("submissions/export.csv", "routes/event.submissions.export.tsx"),

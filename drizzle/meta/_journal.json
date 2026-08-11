@@ -43,6 +43,13 @@
       "when": 1786394157259,
       "tag": "0005_flimsy_harpoon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786443214052,
+      "tag": "0006_amusing_blue_blade",
+      "breakpoints": true
     }
   ]
 }
