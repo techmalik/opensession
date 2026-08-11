@@ -264,10 +264,10 @@ const main = async () => {
 
   // Email templates
   const templates = [
-    ["confirmation", "Submission confirmation", "We received your proposal for {event_name}", "<p>Hi {speaker_name},</p><p>We received \"{talk_title}\". You can edit it until the CFP closes.</p>"],
-    ["acceptance", "Acceptance", "Your talk has been accepted to {event_name}", "<p>Hi {speaker_name},</p><p>Congratulations. Your session \"{talk_title}\" has been accepted. Please confirm your participation and complete your speaker profile.</p><p>{portal_url}</p>"],
-    ["decline", "Decline", "Update on your {event_name} proposal", "<p>Hi {speaker_name},</p><p>Thank you for submitting \"{talk_title}\". We are not able to include it this year. We would love to see you at the event.</p>"],
-    ["schedule", "Schedule notice", "Your session is scheduled: {talk_title}", "<p>Hi {speaker_name},</p><p>\"{talk_title}\" is scheduled. A calendar invite is attached.</p>"],
+    ["confirmation", "Submission confirmation", "We received your proposal for {event_name}", "<p>Hi {speaker_name},</p><p>We received \"{talk_title}\" for {event_name}. You can edit it from your portal until the call for proposals closes.</p>{portal_button}"],
+    ["acceptance", "Acceptance", "Your talk has been accepted to {event_name}", "<p>Hi {speaker_name},</p><p>Congratulations. Your session \"{talk_title}\" has been accepted at {event_name}. Please confirm your participation and complete your speaker profile.</p>{portal_button}"],
+    ["decline", "Decline", "Update on your {event_name} proposal", "<p>Hi {speaker_name},</p><p>Thank you for submitting \"{talk_title}\" to {event_name}. We are not able to include it this year. We had far more strong proposals than slots, and we would still love to see you at the event.</p>"],
+    ["schedule", "Schedule notice", "Your session is scheduled: {talk_title}", "<p>Hi {first_name},</p><p>\"{talk_title}\" is scheduled for {session_time} in {room_name}. A calendar invitation is attached.</p>{portal_button}"],
   ];
   templates.forEach((t, i) =>
     push(`INSERT INTO email_templates (id,event_id,key,name,subject,body_html,created_at) VALUES (${i + 1},${EV},${q(t[0])},${q(t[1])},${q(t[2])},${q(t[3])},${NOW});`)
