@@ -3,6 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import type { Route } from "./+types/event";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
+import { CommandPalette } from "../components/palette";
 import { events } from "../../database/schema";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -91,6 +92,9 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
                 </Link>
               </div>
             </details>
+            <div className="mt-2">
+              <CommandPalette base={base} />
+            </div>
           </div>
 
           <nav className="flex-1 overflow-y-auto p-2">
@@ -128,7 +132,10 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
           </div>
         </aside>
 
-        <main className="ml-[232px] w-full p-6">
+        {/* flex-1 with min-w-0, not w-full: w-full is 100% of the row and the
+            232px sidebar offset is added on top of it, so a wide table pushed the
+            whole page into a horizontal scroll and the fixed sidebar slid away. */}
+        <main className="ml-[232px] min-w-0 flex-1 p-6">
           <Outlet />
         </main>
       </div>

@@ -4,6 +4,7 @@ import type { Route } from "./+types/root";
 // Self-hosted per DESIGN.md: no third-party font request on first paint.
 import "@fontsource-variable/inter";
 import "./app.css";
+import { RouteProgress } from "./components/ui";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -35,6 +36,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <>
+      <RouteProgress />
       {loaderData?.demo ? (
         <div className="border-b border-slate-200 bg-slate-50">
           <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-2 px-4 py-1.5 sm:px-6">

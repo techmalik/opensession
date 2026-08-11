@@ -11,8 +11,8 @@ import {
   PageHeader,
   buttonPrimary,
   buttonSecondary,
-  inputClass,
-  selectClass,
+  inputSized,
+  selectSized,
 } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
@@ -122,9 +122,9 @@ export default function AdminEvents({ loaderData, actionData }: Route.ComponentP
               defaultValue={q}
               placeholder="Search name or location"
               aria-label="Search events"
-              className={`${inputClass} w-64`}
+              className={`${inputSized} w-64`}
             />
-            <select name="status" defaultValue={status} aria-label="Filter by status" className={`${selectClass} w-40`}>
+            <select name="status" defaultValue={status} aria-label="Filter by status" className={`${selectSized} w-40`}>
               <option value="">All statuses</option>
               <option value="active">Active</option>
               <option value="draft">Draft</option>

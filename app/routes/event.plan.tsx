@@ -31,7 +31,9 @@ import {
   buttonPrimary,
   buttonSecondary,
   inputClass,
+  inputSized,
   selectClass,
+  selectSized,
   textareaClass,
 } from "../components/ui";
 
@@ -727,14 +729,14 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
                 max={5}
                 defaultValue={filters.minScore}
                 placeholder={plan.round > 1 ? "e.g. 3.5" : "Any"}
-                className={`${inputClass} w-32`}
+                className={`${inputSized} w-32`}
               />
             </div>
             <div className="space-y-1.5">
               <label htmlFor="trackFilter" className="block text-[13px] font-medium text-slate-900">
                 Track
               </label>
-              <select id="trackFilter" name="trackFilter" defaultValue={filters.trackFilter ?? ""} className={`${selectClass} w-44`}>
+              <select id="trackFilter" name="trackFilter" defaultValue={filters.trackFilter ?? ""} className={`${selectSized} w-44`}>
                 <option value="">All tracks</option>
                 {trackRows.map((track) => (
                   <option key={track.id} value={track.id}>
@@ -755,7 +757,7 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
               <label htmlFor="per" className="block text-[13px] font-medium text-slate-900">
                 Evaluations per submission
               </label>
-              <input id="per" name="per" type="number" min={1} defaultValue={plan.maxEvalsPerSubmission ?? 1} className={`${inputClass} w-28`} />
+              <input id="per" name="per" type="number" min={1} defaultValue={plan.maxEvalsPerSubmission ?? 1} className={`${inputSized} w-28`} />
             </div>
             <button type="submit" name="intent" value="auto-distribute" className={buttonPrimary}>
               Auto-distribute

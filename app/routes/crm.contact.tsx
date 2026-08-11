@@ -33,6 +33,7 @@ import {
   buttonSecondary,
   inputClass,
   selectClass,
+  selectSized,
   textareaClass,
 } from "../components/ui";
 
@@ -320,7 +321,7 @@ export default function CrmContact({ loaderData, actionData }: Route.ComponentPr
               <label htmlFor="eventId" className="text-[13px] text-slate-500">
                 Add to event
               </label>
-              <select id="eventId" name="eventId" className={`${selectClass} w-56 flex-none`}>
+              <select id="eventId" name="eventId" className={`${selectSized} w-56 flex-none`}>
                 {events.map((event) => (
                   <option key={event.id} value={event.id}>
                     {event.name}

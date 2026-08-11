@@ -18,6 +18,7 @@ import {
   buttonSecondary,
   inputClass,
   selectClass,
+  selectSized,
   textareaClass,
 } from "../components/ui";
 
@@ -269,7 +270,7 @@ function ConditionalPicker({
           value={fieldKey}
           onChange={(e) => setFieldKey(e.target.value)}
           aria-label="Show this field when"
-          className={`${selectClass} w-auto min-w-44 flex-none`}
+          className={`${selectSized} w-auto min-w-44 flex-none`}
         >
           <option value="">Always shown</option>
           {candidates.map((c) => (
@@ -286,7 +287,7 @@ function ConditionalPicker({
               name="conditionalValue"
               defaultValue={initial?.fieldKey === fieldKey ? initial.value : ""}
               aria-label="Value that shows this field"
-              className={`${selectClass} w-auto min-w-44 flex-none`}
+              className={`${selectSized} w-auto min-w-44 flex-none`}
             >
               <option value="">Choose a value</option>
               {chosen.options.map((option) => (

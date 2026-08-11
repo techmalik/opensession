@@ -19,8 +19,8 @@ import {
   PageHeader,
   buttonPrimary,
   buttonSecondary,
-  inputClass,
-  selectClass,
+  inputSized,
+  selectSized,
 } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
@@ -180,15 +180,15 @@ export default function Speakers({ loaderData, actionData, params }: Route.Compo
               defaultValue={filters.q}
               placeholder="Search name, email, or company"
               aria-label="Search speakers"
-              className={`${inputClass} w-64 flex-none`}
+              className={`${inputSized} w-64 flex-none`}
             />
-            <select name="status" defaultValue={filters.status} aria-label="Filter by status" className={`${selectClass} w-40 flex-none`}>
+            <select name="status" defaultValue={filters.status} aria-label="Filter by status" className={`${selectSized} w-40 flex-none`}>
               <option value="">Any status</option>
               <option value="invited">Invited</option>
               <option value="confirmed">Confirmed</option>
               <option value="declined">Declined</option>
             </select>
-            <select name="flag" defaultValue={filters.flag} aria-label="Filter by completeness" className={`${selectClass} w-52 flex-none`}>
+            <select name="flag" defaultValue={filters.flag} aria-label="Filter by completeness" className={`${selectSized} w-52 flex-none`}>
               {FLAGS.map((flag) => (
                 <option key={flag.value} value={flag.value}>
                   {flag.label}
@@ -296,7 +296,7 @@ export default function Speakers({ loaderData, actionData, params }: Route.Compo
             {selected.size > 0 ? (
               <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 px-3 py-2.5">
                 <p className="text-[13px] text-slate-500">{selected.size} selected</p>
-                <select name="status" aria-label="Set speaker status" className={`${selectClass} w-40 flex-none`}>
+                <select name="status" aria-label="Set speaker status" className={`${selectSized} w-40 flex-none`}>
                   <option value="confirmed">Confirmed</option>
                   <option value="invited">Invited</option>
                   <option value="declined">Declined</option>

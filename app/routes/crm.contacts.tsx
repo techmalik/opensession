@@ -16,7 +16,7 @@ import {
   type CrmFilters,
 } from "../lib/crm.server";
 import { CRM_STAGES } from "../lib/crm-view";
-import { Card, EmptyState, ErrorNotice, Notice, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass } from "../components/ui";
+import { Card, EmptyState, ErrorNotice, Notice, PageHeader, buttonPrimary, buttonSecondary, inputSized, selectSized } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Directory" }];
@@ -162,9 +162,9 @@ export default function CrmContacts({ loaderData, actionData }: Route.ComponentP
               defaultValue={filters.q}
               placeholder="Search name, email, or company"
               aria-label="Search contacts"
-              className={`${inputClass} w-60 flex-none`}
+              className={`${inputSized} w-60 flex-none`}
             />
-            <select name="company" defaultValue={filters.company} aria-label="Filter by company" className={`${selectClass} w-44 flex-none`}>
+            <select name="company" defaultValue={filters.company} aria-label="Filter by company" className={`${selectSized} w-44 flex-none`}>
               <option value="">Any company</option>
               {options.companies.map((name) => (
                 <option key={name} value={name}>
@@ -172,7 +172,7 @@ export default function CrmContacts({ loaderData, actionData }: Route.ComponentP
                 </option>
               ))}
             </select>
-            <select name="title" defaultValue={filters.title} aria-label="Filter by job title" className={`${selectClass} w-44 flex-none`}>
+            <select name="title" defaultValue={filters.title} aria-label="Filter by job title" className={`${selectSized} w-44 flex-none`}>
               <option value="">Any job title</option>
               {options.titles.map((name) => (
                 <option key={name} value={name}>
@@ -180,7 +180,7 @@ export default function CrmContacts({ loaderData, actionData }: Route.ComponentP
                 </option>
               ))}
             </select>
-            <select name="tag" defaultValue={filters.tag} aria-label="Filter by tag" className={`${selectClass} w-36 flex-none`}>
+            <select name="tag" defaultValue={filters.tag} aria-label="Filter by tag" className={`${selectSized} w-36 flex-none`}>
               <option value="">Any tag</option>
               {options.tags.map((name) => (
                 <option key={name} value={name}>
@@ -188,7 +188,7 @@ export default function CrmContacts({ loaderData, actionData }: Route.ComponentP
                 </option>
               ))}
             </select>
-            <select name="stage" defaultValue={filters.stage} aria-label="Filter by pipeline stage" className={`${selectClass} w-40 flex-none`}>
+            <select name="stage" defaultValue={filters.stage} aria-label="Filter by pipeline stage" className={`${selectSized} w-40 flex-none`}>
               <option value="">Any stage</option>
               {stages.map((stage) => (
                 <option key={stage.key} value={stage.key}>
@@ -196,7 +196,7 @@ export default function CrmContacts({ loaderData, actionData }: Route.ComponentP
                 </option>
               ))}
             </select>
-            <select name="hasEvent" defaultValue={filters.hasEvent} aria-label="Filter by event history" className={`${selectClass} w-44 flex-none`}>
+            <select name="hasEvent" defaultValue={filters.hasEvent} aria-label="Filter by event history" className={`${selectSized} w-44 flex-none`}>
               <option value="">Any event history</option>
               <option value="yes">On at least one event</option>
               <option value="no">Not on any event</option>
@@ -300,7 +300,7 @@ export default function CrmContacts({ loaderData, actionData }: Route.ComponentP
               <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 px-3 py-2.5">
                 <p className="text-[13px] text-slate-500">{selected.size} selected</p>
 
-                <select name="eventId" aria-label="Event to add to" className={`${selectClass} w-52 flex-none`}>
+                <select name="eventId" aria-label="Event to add to" className={`${selectSized} w-52 flex-none`}>
                   {events.map((event) => (
                     <option key={event.id} value={event.id}>
                       {event.name}
@@ -331,8 +331,8 @@ export default function CrmContacts({ loaderData, actionData }: Route.ComponentP
               <input type="hidden" name="f_stage" value={filters.stage ?? ""} />
               <input type="hidden" name="f_hasEvent" value={filters.hasEvent ?? ""} />
               <p className="text-[13px] text-slate-500">Save this view:</p>
-              <input name="segmentName" placeholder="Segment name" aria-label="Segment name" className={`${inputClass} w-48 flex-none`} />
-              <select name="segmentKind" defaultValue="dynamic" aria-label="Segment type" className={`${selectClass} w-56 flex-none`}>
+              <input name="segmentName" placeholder="Segment name" aria-label="Segment name" className={`${inputSized} w-48 flex-none`} />
+              <select name="segmentKind" defaultValue="dynamic" aria-label="Segment type" className={`${selectSized} w-56 flex-none`}>
                 <option value="dynamic">Dynamic, follows the filters</option>
                 <option value="curated">Curated, the selected contacts</option>
               </select>

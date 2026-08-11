@@ -22,7 +22,7 @@ import {
   buttonGhost,
   buttonPrimary,
   buttonSecondary,
-  selectClass,
+  selectSized,
 } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
@@ -282,7 +282,7 @@ export default function Agenda({ loaderData, actionData, params }: Route.Compone
             <input type="hidden" name="durationMin" value={placing.durationMin} />
             <label className="block">
               <span className="mb-1 block text-[13px] font-medium text-slate-900">Day</span>
-              <select name="day" defaultValue={placing.day} className={`${selectClass} w-44`}>
+              <select name="day" defaultValue={placing.day} className={`${selectSized} w-44`}>
                 {days.map((value) => (
                   <option key={value} value={value}>
                     {formatDayLabel(value, event.timezone)}
@@ -292,7 +292,7 @@ export default function Agenda({ loaderData, actionData, params }: Route.Compone
             </label>
             <label className="block">
               <span className="mb-1 block text-[13px] font-medium text-slate-900">Start time</span>
-              <select name="time" defaultValue={placing.time} className={`${selectClass} w-36`}>
+              <select name="time" defaultValue={placing.time} className={`${selectSized} w-36`}>
                 {slots.map((slot) => (
                   <option key={slot.time} value={slot.time}>
                     {slot.label}
@@ -302,7 +302,7 @@ export default function Agenda({ loaderData, actionData, params }: Route.Compone
             </label>
             <label className="block">
               <span className="mb-1 block text-[13px] font-medium text-slate-900">Room</span>
-              <select name="roomId" defaultValue={placing.roomId ?? rooms[0]?.id ?? ""} className={`${selectClass} w-44`}>
+              <select name="roomId" defaultValue={placing.roomId ?? rooms[0]?.id ?? ""} className={`${selectSized} w-44`}>
                 {rooms.map((room) => (
                   <option key={room.id} value={room.id}>
                     {room.name}

@@ -20,8 +20,8 @@ import {
   PageHeader,
   SubNav,
   buttonSecondary,
-  inputClass,
-  selectClass,
+  inputSized,
+  selectSized,
 } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
@@ -129,9 +129,9 @@ export default function ContentReview({ loaderData, actionData, params }: Route.
               defaultValue={filters.q}
               placeholder="Search file, speaker, or session"
               aria-label="Search files"
-              className={`${inputClass} w-60 flex-none`}
+              className={`${inputSized} w-60 flex-none`}
             />
-            <select name="request" defaultValue={filters.requestId ?? ""} aria-label="Filter by request" className={`${selectClass} w-48 flex-none`}>
+            <select name="request" defaultValue={filters.requestId ?? ""} aria-label="Filter by request" className={`${selectSized} w-48 flex-none`}>
               <option value="">All requests</option>
               {requests.map((fileRequest) => (
                 <option key={fileRequest.id} value={fileRequest.id}>
@@ -139,13 +139,13 @@ export default function ContentReview({ loaderData, actionData, params }: Route.
                 </option>
               ))}
             </select>
-            <select name="approval" defaultValue={filters.approval} aria-label="Filter by review state" className={`${selectClass} w-40 flex-none`}>
+            <select name="approval" defaultValue={filters.approval} aria-label="Filter by review state" className={`${selectSized} w-40 flex-none`}>
               <option value="">Any state</option>
               <option value="pending">Pending review</option>
               <option value="approved">Approved</option>
               <option value="denied">Denied</option>
             </select>
-            <select name="scope" defaultValue={filters.scope} aria-label="Filter by version" className={`${selectClass} w-40 flex-none`}>
+            <select name="scope" defaultValue={filters.scope} aria-label="Filter by version" className={`${selectSized} w-40 flex-none`}>
               <option value="">All versions</option>
               <option value="latest">Latest only</option>
             </select>

@@ -1,9 +1,30 @@
 // Shared primitives so every screen inherits DESIGN.md instead of re-deciding it.
 // One primary button per view; everything else is secondary or ghost.
 
-import type { ReactNode } from "react";
-import { Form, Link } from "react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Form, Link, useNavigation } from "react-router";
 import { PUBLIC_STATE_LABEL, type PublicState } from "../lib/labels";
+
+/** The one loading state in the product. DESIGN.md: no skeleton shimmer, and
+ *  anything that resolves under 200ms just renders, so the bar is delayed rather
+ *  than shown on every click. */
+export function RouteProgress() {
+  const navigation = useNavigation();
+  const busy = navigation.state !== "idle";
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!busy) {
+      setVisible(false);
+      return;
+    }
+    const timer = setTimeout(() => setVisible(true), 200);
+    return () => clearTimeout(timer);
+  }, [busy]);
+
+  if (!visible) return null;
+  return <div role="status" aria-label="Loading" className="fixed inset-x-0 top-0 z-50 h-0.5 bg-accent" />;
+}
 
 export const buttonPrimary =
   "inline-flex h-9 items-center justify-center rounded-md bg-accent px-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50";
@@ -17,10 +38,20 @@ export const buttonGhost =
 export const buttonDanger =
   "inline-flex h-9 items-center justify-center rounded-md border border-rose-200 bg-white px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50";
 
-export const inputClass =
-  "h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-accent";
+const controlBase =
+  "h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-accent";
+
+/** Full-width control. The default, because forms are single column. */
+export const inputClass = `${controlBase} w-full`;
 
 export const selectClass = inputClass;
+
+/** Same control with no width of its own, for toolbars and inline fields that set
+ *  their own. Tailwind emits w-full after the fixed widths, so `${inputClass} w-44`
+ *  lost every time and filter toolbars stretched to the full table width. */
+export const inputSized = controlBase;
+
+export const selectSized = controlBase;
 
 export const textareaClass =
   "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus:border-accent";

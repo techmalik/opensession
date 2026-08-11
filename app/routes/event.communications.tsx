@@ -30,7 +30,8 @@ import {
   buttonPrimary,
   buttonSecondary,
   inputClass,
-  selectClass,
+  inputSized,
+  selectSized,
   textareaClass,
 } from "../components/ui";
 
@@ -304,9 +305,9 @@ export default function Communications({ loaderData, actionData, params }: Route
                   defaultValue={filters.q}
                   placeholder="Search subject or recipient"
                   aria-label="Search messages"
-                  className={`${inputClass} w-56 flex-none`}
+                  className={`${inputSized} w-56 flex-none`}
                 />
-                <select name="status" defaultValue={filters.status} aria-label="Filter by status" className={`${selectClass} w-36 flex-none`}>
+                <select name="status" defaultValue={filters.status} aria-label="Filter by status" className={`${selectSized} w-36 flex-none`}>
                   <option value="">Any status</option>
                   <option value="queued">Queued</option>
                   <option value="sent">Sent</option>
@@ -317,7 +318,7 @@ export default function Communications({ loaderData, actionData, params }: Route
                   name="template_key"
                   defaultValue={filters.templateKey}
                   aria-label="Filter by template"
-                  className={`${selectClass} w-44 flex-none`}
+                  className={`${selectSized} w-44 flex-none`}
                 >
                   <option value="">Any template</option>
                   {templateKeys.map((key) => (

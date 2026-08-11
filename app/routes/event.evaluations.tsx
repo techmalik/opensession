@@ -9,7 +9,9 @@ import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { formatDate, fromDateInputValue } from "../lib/format";
 import { evalPlans, events } from "../../database/schema";
-import { Badge, Card, EmptyState, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass } from "../components/ui";
+import { Badge, Card, EmptyState, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass,
+  inputSized, selectClass,
+  selectSized } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Evaluations" }];
@@ -143,9 +145,9 @@ export default function Evaluations({ loaderData, actionData, params }: Route.Co
               defaultValue={searchParams.get("q") ?? ""}
               placeholder="Search plans"
               aria-label="Search plans"
-              className={`${inputClass} w-56 flex-none`}
+              className={`${inputSized} w-56 flex-none`}
             />
-            <select name="status" defaultValue={searchParams.get("status") ?? ""} aria-label="Filter by status" className={`${selectClass} w-36 flex-none`}>
+            <select name="status" defaultValue={searchParams.get("status") ?? ""} aria-label="Filter by status" className={`${selectSized} w-36 flex-none`}>
               <option value="">All statuses</option>
               <option value="active">Active</option>
               <option value="closed">Closed</option>

@@ -2,8 +2,8 @@
 // submissions stay in this table (with is_abstract flipped off) so the pipeline is
 // visible end to end.
 
-import { useState } from "react";
-import { Form, Link, useSearchParams } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Form, Link, useNavigate, useSearchParams, useSubmit } from "react-router";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Route } from "./+types/event.submissions";
 import { getDb } from "../lib/db.server";
@@ -19,8 +19,8 @@ import {
   StatusBadge,
   buttonPrimary,
   buttonSecondary,
-  inputClass,
-  selectClass,
+  inputSized,
+  selectSized,
 } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
@@ -197,6 +197,12 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
   const { event, rows, filters, statuses: statusRows, tracks: trackRows, formats: formatRows, total, countByStatus } = loaderData;
   const [searchParams] = useSearchParams();
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  // Keyboard triage: -1 means no row is focused yet, so the shortcuts stay inert
+  // until the organizer presses j or k.
+  const [cursor, setCursor] = useState(-1);
+  const navigate = useNavigate();
+  const submit = useSubmit();
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
 
   const toggle = (id: number) => {
     setSelected((prev) => {
@@ -209,6 +215,86 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
   const toggleAll = () => {
     setSelected((prev) => (prev.size === rows.length ? new Set<number>() : new Set(rows.map((r) => r.id))));
   };
+
+  // A filter that returns fewer rows must not leave the cursor past the end.
+  useEffect(() => {
+    setCursor((prev) => (prev >= rows.length ? rows.length - 1 : prev));
+  }, [rows.length]);
+
+  useEffect(() => {
+    if (cursor < 0) return;
+    bodyRef.current?.querySelector<HTMLElement>(`[data-row="${cursor}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [cursor]);
+
+  // Keyboard triage. j and k walk the table, a and d move rows through the queues,
+  // x selects, Enter opens. Everything applies to the selection when there is one,
+  // otherwise to the focused row. Ignored while a field has focus, so typing a "d"
+  // into the search box stays a "d".
+  useEffect(() => {
+    const isTyping = (target: EventTarget | null) => {
+      const element = target as HTMLElement | null;
+      if (!element) return false;
+      return (
+        element.tagName === "INPUT" ||
+        element.tagName === "TEXTAREA" ||
+        element.tagName === "SELECT" ||
+        element.isContentEditable
+      );
+    };
+
+    const triage = (intent: "bulk-accept-queue" | "bulk-decline-queue", ids: number[]) => {
+      if (ids.length === 0) return;
+      const data = new FormData();
+      data.set("intent", intent);
+      for (const id of ids) data.append("ids", String(id));
+      setSelected(new Set());
+      submit(data, { method: "post" });
+    };
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || isTyping(event.target)) return;
+      if (rows.length === 0) return;
+      const targets = selected.size > 0 ? [...selected] : cursor >= 0 ? [rows[cursor].id] : [];
+
+      switch (event.key.toLowerCase()) {
+        case "j":
+          event.preventDefault();
+          setCursor((prev) => Math.min(prev + 1, rows.length - 1));
+          break;
+        case "k":
+          event.preventDefault();
+          setCursor((prev) => Math.max(prev - 1, 0));
+          break;
+        case "x":
+          if (cursor < 0) break;
+          event.preventDefault();
+          setSelected((prev) => {
+            const next = new Set(prev);
+            const id = rows[cursor].id;
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+          });
+          break;
+        case "a":
+          event.preventDefault();
+          triage("bulk-accept-queue", targets);
+          break;
+        case "d":
+          event.preventDefault();
+          triage("bulk-decline-queue", targets);
+          break;
+        case "enter":
+          if (cursor < 0) break;
+          event.preventDefault();
+          navigate(`/admin/${params.eventId}/submissions/${rows[cursor].id}`);
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [rows, cursor, selected, navigate, submit, params.eventId]);
 
   const chipParams = (statusKey: string) => {
     const p = new URLSearchParams(searchParams);
@@ -282,9 +368,9 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
               defaultValue={filters.q}
               placeholder="Search title, ID, or speaker"
               aria-label="Search submissions"
-              className={`${inputClass} w-64 flex-none`}
+              className={`${inputSized} w-64 flex-none`}
             />
-            <select name="track" defaultValue={filters.trackId ?? ""} aria-label="Filter by track" className={`${selectClass} w-44 flex-none`}>
+            <select name="track" defaultValue={filters.trackId ?? ""} aria-label="Filter by track" className={`${selectSized} w-44 flex-none`}>
               <option value="">All tracks</option>
               {trackRows.map((track) => (
                 <option key={track.id} value={track.id}>
@@ -292,7 +378,7 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
                 </option>
               ))}
             </select>
-            <select name="format" defaultValue={filters.formatId ?? ""} aria-label="Filter by format" className={`${selectClass} w-44 flex-none`}>
+            <select name="format" defaultValue={filters.formatId ?? ""} aria-label="Filter by format" className={`${selectSized} w-44 flex-none`}>
               <option value="">All formats</option>
               {formatRows.map((format) => (
                 <option key={format.id} value={format.id}>
@@ -304,7 +390,7 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
               name="public"
               defaultValue={filters.publicState}
               aria-label="Filter by public visibility"
-              className={`${selectClass} w-44 flex-none`}
+              className={`${selectSized} w-44 flex-none`}
             >
               <option value="">Any visibility</option>
               <option value="published">Published</option>
@@ -364,10 +450,16 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                      <td className="px-3">
+                <tbody ref={bodyRef}>
+                  {rows.map((row, rowIndex) => (
+                    <tr
+                      key={row.id}
+                      data-row={rowIndex}
+                      className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 ${
+                        rowIndex === cursor ? "bg-slate-50" : ""
+                      }`}
+                    >
+                      <td className={`px-3 border-l-2 ${rowIndex === cursor ? "border-accent" : "border-transparent"}`}>
                         <input
                           type="checkbox"
                           name="ids"
@@ -422,7 +514,7 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
                   Move to Decline Queue
                 </button>
                 <span className="mx-1 text-slate-300">|</span>
-                <select name="statusId" aria-label="Set status" className={`${selectClass} w-40 flex-none`}>
+                <select name="statusId" aria-label="Set status" className={`${selectSized} w-40 flex-none`}>
                   {statusRows.map((status) => (
                     <option key={status.id} value={status.id}>
                       {status.label}
@@ -448,6 +540,12 @@ export default function Submissions({ loaderData, actionData, params }: Route.Co
           </Form>
         )}
       </Card>
+
+      {rows.length > 0 ? (
+        <p className="mt-3 text-xs text-slate-500">
+          Keyboard: j and k move, x selects, a moves to Accept Queue, d moves to Decline Queue, Enter opens.
+        </p>
+      ) : null}
     </>
   );
 }

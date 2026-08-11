@@ -7,7 +7,8 @@ import { requireOrganizer } from "../lib/session.server";
 import { createBaselineFields } from "../lib/cfp.server";
 import { formatDate, slugify } from "../lib/format";
 import { events, forms } from "../../database/schema";
-import { Badge, Card, EmptyState, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass } from "../components/ui";
+import { Badge, Card, EmptyState, PageHeader, buttonPrimary, buttonSecondary, inputClass,
+  inputSized, selectSized } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Forms" }];
@@ -154,9 +155,9 @@ export default function FormsList({ loaderData, actionData, params }: Route.Comp
               defaultValue={searchParams.get("q") ?? ""}
               placeholder="Search forms"
               aria-label="Search forms"
-              className={`${inputClass} w-56 flex-none`}
+              className={`${inputSized} w-56 flex-none`}
             />
-            <select name="status" defaultValue={searchParams.get("status") ?? ""} aria-label="Filter by status" className={`${selectClass} w-36 flex-none`}>
+            <select name="status" defaultValue={searchParams.get("status") ?? ""} aria-label="Filter by status" className={`${selectSized} w-36 flex-none`}>
               <option value="">All statuses</option>
               <option value="draft">Draft</option>
               <option value="published">Published</option>

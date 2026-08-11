@@ -112,6 +112,9 @@ export default [
     route("settings/integrations", "routes/event.integrations.tsx"),
     route("settings/api", "routes/event.api.tsx"),
 
+    // Cmd+K palette search. JSON only, fetched by app/components/palette.tsx.
+    route("palette.json", "routes/event.palette.tsx"),
+
     route("submissions", "routes/event.submissions.tsx"),
     route("submissions/export.csv", "routes/event.submissions.export.tsx"),
     route("submissions/new", "routes/event.submission.new.tsx"),

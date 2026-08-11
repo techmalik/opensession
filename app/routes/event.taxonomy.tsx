@@ -4,7 +4,8 @@ import type { Route } from "./+types/event.taxonomy";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { formats, levels, rooms, tags, tracks } from "../../database/schema";
-import { Card, PageHeader, SubNav, buttonPrimary, buttonGhost, buttonSecondary, inputClass } from "../components/ui";
+import { Card, PageHeader, SubNav, buttonPrimary, buttonGhost, buttonSecondary, inputClass,
+  inputSized } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Tracks and formats" }];
@@ -181,7 +182,7 @@ function TaxonomySection({
       </div>
 
       {items.length === 0 ? (
-        <p className="px-4 py-4 text-sm text-slate-500">Nothing here yet.</p>
+        <p className="px-4 py-4 text-sm text-slate-500">No {title.toLowerCase()} yet. Add the first one below.</p>
       ) : (
         <ul className="divide-y divide-slate-100">
           {items.map((item, index) => (
@@ -198,7 +199,7 @@ function TaxonomySection({
                     defaultValue={item.numeric ?? ""}
                     aria-label={numericLabel}
                     placeholder={numericLabel}
-                    className={`${inputClass} w-28 shrink-0`}
+                    className={`${inputSized} w-28 shrink-0`}
                   />
                 ) : null}
                 <button type="submit" name="intent" value="rename" className={buttonSecondary}>
@@ -257,7 +258,7 @@ function TaxonomySection({
         <input type="hidden" name="kind" value={kind} />
         <input name="name" placeholder={`Add ${title.toLowerCase().replace(/s$/, "")}`} aria-label={`New ${title}`} className={`${inputClass} min-w-40 flex-1`} />
         {numericLabel ? (
-          <input name="numeric" type="number" min={0} placeholder={numericLabel} aria-label={numericLabel} className={`${inputClass} w-28 shrink-0`} />
+          <input name="numeric" type="number" min={0} placeholder={numericLabel} aria-label={numericLabel} className={`${inputSized} w-28 shrink-0`} />
         ) : null}
         <button type="submit" name="intent" value="create" className={buttonPrimary}>
           Add
