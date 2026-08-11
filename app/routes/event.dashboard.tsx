@@ -5,7 +5,7 @@ import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { daysUntil, formatDate, formatDateTime } from "../lib/format";
 import { events, forms, sessions, statuses } from "../../database/schema";
-import { Card, EmptyState, PageHeader, StatusBadge, buttonPrimary } from "../components/ui";
+import { Card, EmptyState, PageHeader, StatusBadge, buttonPrimary, buttonSecondary } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Dashboard" }];
@@ -17,7 +17,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const db = getDb();
 
   const event = await db
-    .select({ name: events.name, timezone: events.timezone, startsAt: events.startsAt })
+    .select({ name: events.name, slug: events.slug, timezone: events.timezone, startsAt: events.startsAt })
     .from(events)
     .where(eq(events.id, eventId))
     .get();
@@ -75,7 +75,15 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
-      <PageHeader title="Dashboard" description={event.name} />
+      <PageHeader
+        title="Dashboard"
+        description={event.name}
+        actions={
+          <Link to={`/e/${event.slug}`} target="_blank" rel="noreferrer" className={buttonSecondary}>
+            Public page
+          </Link>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <Card className="p-4">

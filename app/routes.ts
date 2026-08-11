@@ -11,6 +11,9 @@ export default [
   // demo accounts by app/lib/roles.ts.
   route("demo/:role", "routes/demo.tsx"),
 
+  // Public event page: the one place a specific event has a page of its own.
+  route("e/:eventSlug", "routes/event-public.tsx"),
+
   // Public CFP: entry page, legacy submit path, and the live form portal.
   route("cfp/:eventSlug", "routes/cfp.tsx"),
   route("cfp/:eventSlug/submit", "routes/cfp.submit-redirect.tsx"),
