@@ -5,6 +5,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { appBaseUrl, bindings, getDb } from "./db.server";
 import { queueEmail, renderTemplate, type IcsAttachment } from "./email";
+import { emailButton } from "./email-layout";
 import { emailSends, emailTemplates } from "../../database/schema";
 
 export interface TemplateBody {
@@ -22,7 +23,7 @@ const BUILT_IN: Record<string, TemplateBody> = {
     name: "Acceptance",
     subject: "Your talk has been accepted to {event_name}",
     body:
-      '<p>Hi {speaker_name},</p><p>Congratulations. Your session "{talk_title}" has been accepted. Please confirm your participation and complete your speaker profile.</p><p>{portal_url}</p>',
+      '<p>Hi {speaker_name},</p><p>Congratulations. Your session "{talk_title}" has been accepted at {event_name}. Please confirm your participation and complete your speaker profile.</p>{portal_button}',
   },
   decline: {
     key: "decline",
@@ -36,41 +37,41 @@ const BUILT_IN: Record<string, TemplateBody> = {
     name: "CFP close reminder",
     subject: "{event_name}: {form_name} closes {close_date}",
     body:
-      "<p>Hi {first_name},</p><p>{form_name} for {event_name} closes on {close_date}.</p><p>{reason}</p><p>You can finish it here: {portal_url}</p>",
+      "<p>Hi {first_name},</p><p>{form_name} for {event_name} closes on {close_date}.</p><p>{reason}</p>{portal_button}",
   },
   weekly_digest: {
     key: "weekly_digest",
     name: "Weekly speaker digest",
     subject: "{event_name}: what is still outstanding",
-    body: "<p>Hi {first_name},</p><p>This is your weekly summary for {event_name}.</p>{task_list}<p>{portal_url}</p>",
+    body: "<p>Hi {first_name},</p><p>This is your weekly summary for {event_name}.</p>{task_list}{portal_button}",
   },
   portal_invite: {
     key: "portal_invite",
     name: "Speaker portal invite",
     subject: "Your speaker portal for {event_name}",
     body:
-      "<p>Hi {first_name},</p><p>Your speaker portal for {event_name} is open. Complete your profile, confirm your sessions, and work through your task list there.</p><p>{portal_url}</p>",
+      "<p>Hi {first_name},</p><p>Your speaker portal for {event_name} is open. Complete your profile, confirm your sessions, and work through your task list there.</p>{portal_button}",
   },
   speaker_welcome: {
     key: "speaker_welcome",
     name: "Speaker welcome",
     subject: "Welcome to {event_name} speakers",
     body:
-      "<p>Hi {first_name},</p><p>Welcome to {event_name}. Everything you need is in your speaker portal: your sessions, your profile, and your task list.</p><p>{portal_url}</p>",
+      "<p>Hi {first_name},</p><p>Welcome to {event_name}. Everything you need is in your speaker portal: your sessions, your profile, and your task list.</p>{portal_button}",
   },
   deliverables_reminder: {
     key: "deliverables_reminder",
     name: "Deliverables reminder",
     subject: "Still outstanding for {event_name}",
     body:
-      "<p>Hi {first_name},</p><p>These are still outstanding for {event_name}:</p>{task_list}<p>You can upload them from your portal.</p><p>{portal_url}</p>",
+      "<p>Hi {first_name},</p><p>These are still outstanding for {event_name}:</p>{task_list}<p>You can upload them from your portal.</p>{portal_button}",
   },
   schedule: {
     key: "schedule",
     name: "Schedule notice",
     subject: "Your session is scheduled: {talk_title}",
     body:
-      '<p>Hi {first_name},</p><p>"{talk_title}" is scheduled for {session_time} in {room_name}. A calendar invite is attached.</p><p>{portal_url}</p>',
+      '<p>Hi {first_name},</p><p>"{talk_title}" is scheduled for {session_time} in {room_name}. A calendar invitation is attached.</p>{portal_button}',
   },
 };
 
@@ -109,11 +110,15 @@ export function mergeVars(
   person: MergeSubject,
   extras: Record<string, string> = {}
 ): Record<string, string> {
+  const portalUrl = `${appBaseUrl()}/portal`;
   return {
     speaker_name: person.name,
     first_name: person.firstName || person.name,
     event_name: event.name,
-    portal_url: `${appBaseUrl()}/portal`,
+    portal_url: portalUrl,
+    // The same link as a real button. Templates use this instead of pasting a URL
+    // into a paragraph, which is what made every email look like a plain-text note.
+    portal_button: emailButton(portalUrl, "Open your speaker portal"),
     talk_title: "",
     task_list: "",
     ...extras,
@@ -215,7 +220,8 @@ export const MERGE_TAGS: { tag: string; meaning: string }[] = [
   { tag: "{first_name}", meaning: "First name, falls back to the full name" },
   { tag: "{event_name}", meaning: "This event's name" },
   { tag: "{talk_title}", meaning: "Session title, where the send is about one session" },
-  { tag: "{portal_url}", meaning: "Link to the speaker portal" },
+  { tag: "{portal_url}", meaning: "Plain link to the speaker portal" },
+  { tag: "{portal_button}", meaning: "The portal link as a styled button" },
   { tag: "{task_list}", meaning: "Outstanding tasks and files, as an HTML list" },
   { tag: "{session_time}", meaning: "Scheduled start, schedule notices only" },
   { tag: "{room_name}", meaning: "Room, schedule notices only" },

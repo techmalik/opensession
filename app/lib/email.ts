@@ -6,8 +6,9 @@
 // queueEmail writes the row now and hands delivery to the cron job runner (bulk).
 
 import { drizzle } from "drizzle-orm/d1";
-import { emailSends, jobs } from "../../database/schema";
+import { emailSends, events, jobs } from "../../database/schema";
 import { eq } from "drizzle-orm";
+import { htmlToText, renderEmailLayout } from "./email-layout";
 
 export interface IcsAttachment {
   filename: string;
@@ -87,12 +88,25 @@ export async function deliverEmail(env: EmailEnv, sendId: number, ics?: IcsAttac
     return "test";
   }
 
+  // The stored body is the editable fragment; the layout is applied here so a
+  // template edit never means editing table markup.
+  const event = row.eventId
+    ? await db.select({ name: events.name }).from(events).where(eq(events.id, row.eventId)).get()
+    : null;
+  const html = renderEmailLayout({
+    eventName: event?.name ?? env.EMAIL_FROM_NAME ?? "OpenSession",
+    bodyHtml: row.bodyHtml,
+    preheader: row.subject,
+    footerNote: row.icsAttached ? "A calendar invitation is attached." : undefined,
+  });
+
   try {
     const payload: Record<string, unknown> = {
       sender: { email: env.EMAIL_FROM ?? "no-reply@example.com", name: env.EMAIL_FROM_NAME ?? "OpenSession" },
       to: [{ email: row.toEmail, name: row.toEmail }],
       subject: row.subject,
-      htmlContent: row.bodyHtml,
+      htmlContent: html,
+      textContent: htmlToText(row.bodyHtml),
     };
     if (ics) {
       payload.attachment = [{ name: ics.filename, content: btoa(unescape(encodeURIComponent(ics.content))) }];

@@ -10,7 +10,7 @@ import { appBaseUrl, bindings, getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { renderTemplate, sendEmail } from "../lib/email";
 import { buildIcs } from "../lib/ics";
-import { contacts, emailTemplates, events, sessionParticipants, sessions, statuses } from "../../database/schema";
+import { contacts, events, sessionParticipants, sessions, statuses } from "../../database/schema";
 import { Card, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, textareaClass } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
@@ -98,25 +98,12 @@ async function loadRecipients(eventId: number, queue: Queue): Promise<Recipient[
   return recipients;
 }
 
+/** One source for decision copy: whatever Communications holds for the key, or the
+ *  built-in default. Editing the template there changes what goes out from here. */
 async function defaultTemplate(eventId: number, queue: Queue): Promise<{ subject: string; body: string }> {
-  const db = getDb();
-  const key = queue === "accept_queue" ? "acceptance" : "decline";
-  const template = await db
-    .select({ subject: emailTemplates.subject, bodyHtml: emailTemplates.bodyHtml })
-    .from(emailTemplates)
-    .where(and(eq(emailTemplates.eventId, eventId), eq(emailTemplates.key, key)))
-    .get();
-  if (template) return { subject: template.subject, body: template.bodyHtml };
-
-  return queue === "accept_queue"
-    ? {
-        subject: "Your talk has been accepted to {event_name}",
-        body: "<p>Hi {speaker_name},</p><p>Congratulations. Your session \"{talk_title}\" has been accepted. Please confirm your participation and complete your speaker profile.</p><p>{portal_url}</p>",
-      }
-    : {
-        subject: "Update on your {event_name} proposal",
-        body: "<p>Hi {speaker_name},</p><p>Thank you for submitting \"{talk_title}\". We are not able to include it this year. We would love to see you at the event.</p>",
-      };
+  const { getTemplate } = await import("../lib/comms.server");
+  const template = await getTemplate(eventId, queue === "accept_queue" ? "acceptance" : "decline");
+  return { subject: template.subject, body: template.body };
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
