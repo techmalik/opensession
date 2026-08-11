@@ -26,9 +26,12 @@ landing pages.
   titles), 28 (public pages only). Line heights tight: 1.4 body, 1.2 headings.
 - Neutrals: Tailwind slate. Page bg white; app chrome bg slate-50; borders slate-200;
   body text slate-900; secondary text slate-500.
-- Accent: green #0d9166 (darkened from Sessionboard's #45cc93 for AA contrast on white).
+- Accent: green #0b7b57 (darkened from Sessionboard's #45cc93 for AA contrast on white).
+  It measures 5.27:1 both as link text on white and under white text on a filled
+  button. The earlier #0d9166 was 3.99:1 in both directions and failed AA at normal
+  text size, which Lighthouse flagged on the public pages. Hover is #096646.
   Used for: primary buttons, active nav item, focus rings, links. Nothing else.
-- Status colors, fixed: pending slate-400, accept queue sky-600, accepted green #0d9166,
+- Status colors, fixed: pending slate-400, accept queue sky-600, accepted green #0b7b57,
   decline queue amber-600, declined rose-600. Rendered as small dot + label badges,
   never full-width colored rows.
 - Radius: 6px controls, 8px cards. Shadows: shadow-sm only. Dark mode: not in scope

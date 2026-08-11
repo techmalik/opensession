@@ -10,7 +10,13 @@ import { events, forms } from "../../database/schema";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData?.event) return [{ title: "Call for papers" }];
-  return [{ title: `${loaderData.form?.name ?? "Call for papers"} | ${loaderData.event.name}` }];
+  return [
+    { title: `${loaderData.form?.name ?? "Call for papers"} | ${loaderData.event.name}` },
+    {
+      name: "description",
+      content: `Submit a talk to ${loaderData.event.name}. Read the call for papers, then send your abstract.`,
+    },
+  ];
 }
 
 export async function loader({ params }: Route.LoaderArgs) {

@@ -11,7 +11,7 @@ import { emailTemplates, events, formats, levels, rooms, statuses, tracks } from
 export const SYSTEM_STATUSES: { key: string; label: string; color: string }[] = [
   { key: "pending", label: "Pending", color: "#94a3b8" },
   { key: "accept_queue", label: "Accept Queue", color: "#0284c7" },
-  { key: "accepted", label: "Accepted", color: "#0d9166" },
+  { key: "accepted", label: "Accepted", color: "#0b7b57" },
   { key: "decline_queue", label: "Decline Queue", color: "#d97706" },
   { key: "declined", label: "Declined", color: "#e11d48" },
 ];
@@ -21,7 +21,7 @@ export const SYSTEM_STATUSES: { key: string; label: string; color: string }[] = 
  *  taxonomy), and the agenda has no rooms to schedule into. Generic enough for any
  *  conference, and an organizer renames or deletes any of it under Settings. */
 export const DEFAULT_TRACKS: { name: string; color: string }[] = [
-  { name: "Engineering", color: "#0d9166" },
+  { name: "Engineering", color: "#0b7b57" },
   { name: "Product", color: "#0284c7" },
   { name: "Practice", color: "#7c3aed" },
 ];

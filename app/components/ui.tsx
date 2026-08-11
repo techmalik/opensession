@@ -213,7 +213,7 @@ export function PortalNav({ current }: { current: string }) {
             <Link
               to={tab.to}
               aria-current={tab.to === current ? "page" : undefined}
-              className={`inline-flex h-9 items-center rounded-md px-3 text-sm font-medium ${
+              className={`inline-flex h-11 items-center rounded-md px-3 text-sm font-medium sm:h-9 ${
                 tab.to === current ? "bg-slate-50 text-accent" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >

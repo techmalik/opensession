@@ -10,7 +10,7 @@
 // This wraps them at delivery time, so editing a template never means editing
 // layout markup.
 
-const ACCENT = "#0d9166";
+const ACCENT = "#0b7b57";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
 const BORDER = "#e2e8f0";

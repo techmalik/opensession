@@ -6,14 +6,16 @@
   --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Accent: darkened from Sessionboard's #45cc93 for AA contrast on white. */
-  --color-accent: #0d9166;
-  --color-accent-hover: #0b7b57;
+  /* Accent: darkened from Sessionboard's #45cc93 until it clears WCAG AA (4.5:1)
+     both ways: as link text on white, and under white text on a filled button.
+     #0d9166 measured 3.99:1 in both directions and failed. */
+  --color-accent: #0b7b57; /* 5.27:1 */
+  --color-accent-hover: #096646; /* 7.00:1 */
 
   /* Fixed status colors. */
   --color-status-pending: var(--color-slate-400);
   --color-status-accept-queue: var(--color-sky-600);
-  --color-status-accepted: #0d9166;
+  --color-status-accepted: #0b7b57;
   --color-status-decline-queue: var(--color-amber-600);
   --color-status-declined: var(--color-rose-600);
 }

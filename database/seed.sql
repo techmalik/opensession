@@ -67,7 +67,7 @@ INSERT INTO event_contacts (event_id,contact_id,kind,status) VALUES (1,7,'speake
 INSERT INTO blobs (key,data,content_type,size,created_at) VALUES ('headshot-seed/8.svg',X'3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d223020302033323020333230222077696474683d2233323022206865696768743d223332302220726f6c653d22696d672220617269612d6c6162656c3d22446965676f2050617a223e3c726563742077696474683d2233323022206865696768743d22333230222066696c6c3d2223626531323363222f3e3c7465787420783d223136302220793d22313630222066696c6c3d22236666666666662220666f6e742d66616d696c793d22496e7465722c2073797374656d2d75692c2073616e732d73657269662220666f6e742d73697a653d223132382220666f6e742d7765696768743d223630302220746578742d616e63686f723d226d6964646c652220646f6d696e616e742d626173656c696e653d2263656e7472616c223e44503c2f746578743e3c2f7376673e','image/svg+xml',346,1786305600);
 INSERT INTO contacts (id,email,first_name,last_name,title,company,bio,headshot_blob_key,dietary,tshirt,travel,tags_json,custom_json,created_at,updated_at) VALUES (8,'diego.paz@meridian.demo','Diego','Paz','Platform Architect','Sable Cloud','Diego designs multi-region control planes and writes about platform migrations.','headshot-seed/8.svg',NULL,NULL,NULL,'[]','{}',1786305600,1786305600);
 INSERT INTO event_contacts (event_id,contact_id,kind,status) VALUES (1,8,'speaker','confirmed');
-INSERT INTO tracks (id,event_id,name,color,sort) VALUES (1,1,'Infrastructure','#0d9166',0);
+INSERT INTO tracks (id,event_id,name,color,sort) VALUES (1,1,'Infrastructure','#0b7b57',0);
 INSERT INTO tracks (id,event_id,name,color,sort) VALUES (2,1,'AI Tooling','#0284c7',1);
 INSERT INTO tracks (id,event_id,name,color,sort) VALUES (3,1,'Developer Productivity','#7c3aed',2);
 INSERT INTO formats (id,event_id,name,duration_min,sort) VALUES (1,1,'Keynote (45 min)',45,0);
@@ -84,7 +84,7 @@ INSERT INTO rooms (id,event_id,name,capacity,sort) VALUES (3,1,'Studio 2',120,2)
 INSERT INTO rooms (id,event_id,name,capacity,sort) VALUES (4,1,'Lab',60,3);
 INSERT INTO statuses (id,event_id,key,label,color,is_system,sort) VALUES (1,1,'pending','Pending','#94a3b8',1,1);
 INSERT INTO statuses (id,event_id,key,label,color,is_system,sort) VALUES (2,1,'accept_queue','Accept Queue','#0284c7',1,2);
-INSERT INTO statuses (id,event_id,key,label,color,is_system,sort) VALUES (3,1,'accepted','Accepted','#0d9166',1,3);
+INSERT INTO statuses (id,event_id,key,label,color,is_system,sort) VALUES (3,1,'accepted','Accepted','#0b7b57',1,3);
 INSERT INTO statuses (id,event_id,key,label,color,is_system,sort) VALUES (4,1,'decline_queue','Decline Queue','#d97706',1,4);
 INSERT INTO statuses (id,event_id,key,label,color,is_system,sort) VALUES (5,1,'declined','Declined','#e11d48',1,5);
 INSERT INTO forms (id,event_id,name,slug,type,welcome_html,thank_you_html,opens_at,closes_at,submission_limit,max_speakers,allow_drafts,allow_edit_after_submit,confirmation_subject,confirmation_body,reminder_days_json,status,created_at) VALUES (1,1,'Call for Proposals','call-for-proposals','abstract','<p>Meridian Dev Summit brings 800 platform and tooling engineers to Toronto. Tell us what you want to teach them.</p>','<p>Thanks, your proposal is in. We confirm decisions by April 30, 2027.</p>',1785542400,1809129540,3,4,1,1,'We received your proposal for Meridian Dev Summit 2027','<p>Hi {speaker_name},</p><p>We received your proposal "{talk_title}". You can edit it until the CFP closes on April 30, 2027.</p><p>{portal_url}</p>','[5,1]','published',1786305600);

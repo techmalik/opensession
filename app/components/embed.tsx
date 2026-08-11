@@ -14,6 +14,11 @@ export const embedButton =
 export const embedButtonSecondary =
   "inline-flex h-11 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-base font-medium text-slate-900 hover:bg-slate-50";
 
+/** Standalone action links (back, view details). inline-flex with a 44px minimum,
+ *  because a bare text link is a 19px tap target on a phone and these widgets are
+ *  read on phones. Links that sit inside a sentence keep the normal line height. */
+export const embedLink = "inline-flex min-h-11 items-center text-base font-medium text-accent hover:underline";
+
 /** Event branding header, cross-links to the other widgets, and the attribution
  *  footer. `wide` gives the agenda grid room to breathe. */
 export function EmbedShell({
@@ -183,10 +188,12 @@ export function Avatar({ speaker, size = 48 }: { speaker: PublicSpeaker; size?: 
       />
     );
   }
+  // slate-600 rather than slate-500 on the initials: they render as small as 12px,
+  // where slate-500 on slate-100 is 4.35:1 and misses AA.
   return (
     <span
       aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-100 font-medium text-slate-500"
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-100 font-medium text-slate-600"
       style={{ width: size, height: size, fontSize: Math.round(size / 2.6) }}
     >
       {speaker.initials}

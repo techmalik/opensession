@@ -4,10 +4,14 @@
 import { data } from "react-router";
 import type { Route } from "./+types/embed.speakers";
 import { filterSpeakers, loadPublicData, publicCacheHeaders } from "../lib/public.server";
-import { Avatar, EmbedSearch, EmbedShell, EmptyPublic, ShowMore } from "../components/embed";
+import { Avatar, EmbedSearch, EmbedShell, EmptyPublic, ShowMore, embedLink } from "../components/embed";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: loaderData ? `Speakers | ${loaderData.event.name}` : "Speakers" }];
+  if (!loaderData) return [{ title: "Speakers" }];
+  return [
+    { title: `Speakers | ${loaderData.event.name}` },
+    { name: "description", content: `Speakers at ${loaderData.event.name} and the sessions they are giving.` },
+  ];
 }
 
 export function headers({ loaderHeaders }: Route.HeadersArgs) {
@@ -66,7 +70,7 @@ export default function SpeakersWidget({ loaderData }: Route.ComponentProps) {
         </section>
 
         <p className="mt-8">
-          <a href={base} className="text-base font-medium text-accent hover:underline">
+          <a href={base} className={embedLink}>
             Back to all speakers
           </a>
         </p>

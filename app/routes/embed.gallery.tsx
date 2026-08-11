@@ -5,10 +5,14 @@
 import { data } from "react-router";
 import type { Route } from "./+types/embed.gallery";
 import { filterSpeakers, loadPublicData, publicCacheHeaders } from "../lib/public.server";
-import { Avatar, EmbedSearch, EmbedShell, EmptyPublic, ShowMore } from "../components/embed";
+import { Avatar, EmbedSearch, EmbedShell, EmptyPublic, ShowMore, embedLink } from "../components/embed";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: loaderData ? `Speaker gallery | ${loaderData.event.name}` : "Speaker gallery" }];
+  if (!loaderData) return [{ title: "Speaker gallery" }];
+  return [
+    { title: `Speaker gallery | ${loaderData.event.name}` },
+    { name: "description", content: `Headshots and bios for the speakers at ${loaderData.event.name}.` },
+  ];
 }
 
 export function headers({ loaderHeaders }: Route.HeadersArgs) {
@@ -41,7 +45,7 @@ export default function GalleryWidget({ loaderData }: Route.ComponentProps) {
     return (
       <EmbedShell event={event} current="gallery" heading={detail.name}>
         <p className="mt-2">
-          <a href={base} className="text-base font-medium text-accent hover:underline">
+          <a href={base} className={embedLink}>
             Back to the gallery
           </a>
         </p>

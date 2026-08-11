@@ -6,14 +6,18 @@
 import { data } from "react-router";
 import type { Route } from "./+types/embed.agenda";
 import { loadPublicData, publicCacheHeaders } from "../lib/public.server";
-import { EmbedShell, EmptyPublic, ShowMore, SpeakerLine, SessionTags } from "../components/embed";
+import { EmbedShell, EmptyPublic, SessionTags, ShowMore, SpeakerLine, embedLink } from "../components/embed";
 
 const ROW_PX = 26; // one 15-minute row
 const MIN_BLOCK_ROWS = 2; // a 10-minute talk still needs room for its title
 const SLOT = 15;
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: loaderData ? `Agenda | ${loaderData.event.name}` : "Agenda" }];
+  if (!loaderData) return [{ title: "Agenda" }];
+  return [
+    { title: `Agenda | ${loaderData.event.name}` },
+    { name: "description", content: `The full schedule for ${loaderData.event.name}, by day and room.` },
+  ];
 }
 
 export function headers({ loaderHeaders }: Route.HeadersArgs) {
@@ -91,7 +95,7 @@ export default function AgendaWidget({ loaderData }: Route.ComponentProps) {
         ) : null}
 
         <p className="mt-8">
-          <a href={`${base}?day=${detail.day}`} className="text-base font-medium text-accent hover:underline">
+          <a href={`${base}?day=${detail.day}`} className={embedLink}>
             Back to the agenda
           </a>
         </p>

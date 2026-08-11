@@ -13,7 +13,11 @@ import { groupByDay, loadPublicData, publicCacheHeaders } from "../lib/public.se
 import { EmbedShell, EmptyPublic, SessionTags } from "../components/embed";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: loaderData?.event ? `Agenda | ${loaderData.event.name}` : "Agenda" }];
+  if (!loaderData?.event) return [{ title: "Agenda" }];
+  return [
+    { title: `Agenda | ${loaderData.event.name}` },
+    { name: "description", content: `The published schedule for ${loaderData.event.name}.` },
+  ];
 }
 
 export function headers({ loaderHeaders }: Route.HeadersArgs) {

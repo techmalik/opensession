@@ -44,7 +44,10 @@ import { ROLE_LABEL } from "../lib/labels";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData?.event) return [{ title: "Call for papers" }];
-  return [{ title: `${loaderData.form.name} | ${loaderData.event.name}` }];
+  return [
+    { title: `${loaderData.form.name} | ${loaderData.event.name}` },
+    { name: "description", content: `Submit your abstract to ${loaderData.event.name}.` },
+  ];
 }
 
 // Speaker-section fields whose answers live on the contact record, not the session.

@@ -18,7 +18,14 @@ import {
 } from "../components/embed";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: loaderData ? `Itinerary | ${loaderData.event.name}` : "Itinerary" }];
+  if (!loaderData) return [{ title: "Itinerary" }];
+  return [
+    { title: `Itinerary | ${loaderData.event.name}` },
+    {
+      name: "description",
+      content: `Build a personal schedule for ${loaderData.event.name} and export it to your calendar.`,
+    },
+  ];
 }
 
 export function headers() {

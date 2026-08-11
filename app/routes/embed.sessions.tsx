@@ -10,10 +10,14 @@ import {
   publicCacheHeaders,
   readFilters,
 } from "../lib/public.server";
-import { EmbedSearch, EmbedShell, EmptyPublic, ShowMore, SpeakerLine, SessionTags } from "../components/embed";
+import { EmbedSearch, EmbedShell, EmptyPublic, SessionTags, ShowMore, SpeakerLine, embedLink } from "../components/embed";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: loaderData ? `Sessions | ${loaderData.event.name}` : "Sessions" }];
+  if (!loaderData) return [{ title: "Sessions" }];
+  return [
+    { title: `Sessions | ${loaderData.event.name}` },
+    { name: "description", content: `Every session at ${loaderData.event.name}, with speakers, times, and rooms.` },
+  ];
 }
 
 export function headers({ loaderHeaders }: Route.HeadersArgs) {
@@ -67,7 +71,7 @@ export default function SessionsWidget({ loaderData }: Route.ComponentProps) {
         ) : null}
 
         <p className="mt-8">
-          <a href={base} className="text-base font-medium text-accent hover:underline">
+          <a href={base} className={embedLink}>
             Back to all sessions
           </a>
         </p>
@@ -116,7 +120,7 @@ export default function SessionsWidget({ loaderData }: Route.ComponentProps) {
 
               <SessionTags session={session} />
               <p className="mt-2">
-                <a href={`${base}?session=${session.id}`} className="text-base font-medium text-accent hover:underline">
+                <a href={`${base}?session=${session.id}`} className={embedLink}>
                   View details
                 </a>
               </p>
