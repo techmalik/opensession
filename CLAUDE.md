@@ -222,3 +222,30 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
   have the base added under Access, not just the scopes: a token with no
   base authenticates, returns {"bases":[]}, and 403s on everything else.
   explainAirtableError turns that into instructions in the UI.
+
+## Phase 7 notes (polish)
+
+- Tailwind sorts `w-full` after the fixed widths, so `${inputClass} w-44` lost
+  and every filter toolbar in the product rendered full width. Sized controls
+  use inputSized / selectSized (same styling, no width of their own) and the
+  caller sets the width. Never add a width to inputClass again.
+- The admin shell main is `ml-[232px] min-w-0 flex-1`, not w-full. w-full is
+  100% of the row and the sidebar offset is added on top, so a wide table put
+  the whole page into a horizontal scroll and the fixed sidebar slid away.
+- The accent is #0b7b57 (hover #096646). The old #0d9166 measured 3.99:1
+  against white in both directions and failed WCAG AA at normal text size,
+  which Lighthouse flagged on the public pages. If the accent changes again,
+  check white-on-accent and accent-on-white, both need 4.5:1.
+- Lighthouse against `vite preview` scores about 82, against the deployed
+  Worker 98 to 99. The local preview serves uncompressed responses and has no
+  CDN; only deployed numbers mean anything. Measure a11y and SEO locally
+  (structural, identical either way), measure performance on the deploy.
+- Portal and widget tap targets are 44px on public surfaces (DESIGN.md).
+  embedLink in components/embed.tsx is the standalone action link; links that
+  sit inside a sentence keep normal line height.
+- The command palette (components/palette.tsx) fetches
+  /admin/:eventId/palette.json, a resource route. It is bundled into the
+  event route chunk, so public pages never download it. Keep it that way.
+- Keyboard triage on the submissions table listens on document and bails when
+  the event target is an input, textarea, select, or contenteditable. Any new
+  shortcut needs the same guard.
