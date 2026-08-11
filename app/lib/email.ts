@@ -53,6 +53,21 @@ export async function recordEmail(env: EmailEnv, mail: OutgoingEmail): Promise<n
   return row.id;
 }
 
+// Domains that cannot receive mail: RFC 2606 reserves example.*, .test, .invalid,
+// and .localhost, and the seeded demo personas use .demo addresses. Delivering to
+// them produces hard bounces, and a provider account with a high bounce rate gets
+// suspended, which would take real mail down with it.
+const UNDELIVERABLE = [
+  /@(.+\.)?example\.(com|net|org)$/i,
+  /\.(test|invalid|localhost|demo)$/i,
+  /@demo\./i,
+];
+
+export function isUndeliverable(email: string): boolean {
+  const address = email.trim().toLowerCase();
+  return UNDELIVERABLE.some((pattern) => pattern.test(address));
+}
+
 /** Delivers an already-recorded send. Safe to call twice: a row that is already
  *  "sent" is left alone. */
 export async function deliverEmail(env: EmailEnv, sendId: number, ics?: IcsAttachment): Promise<string> {
@@ -62,6 +77,13 @@ export async function deliverEmail(env: EmailEnv, sendId: number, ics?: IcsAttac
   if (row.status === "sent") return "sent";
   if (!env.BREVO_API_KEY) {
     await db.update(emailSends).set({ status: "test" }).where(eq(emailSends.id, sendId));
+    return "test";
+  }
+  if (isUndeliverable(row.toEmail)) {
+    await db
+      .update(emailSends)
+      .set({ status: "test", error: "Recorded only: that domain cannot receive mail (demo or reserved address)." })
+      .where(eq(emailSends.id, sendId));
     return "test";
   }
 
