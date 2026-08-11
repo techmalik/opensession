@@ -143,6 +143,29 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
   version 1, credited to the speaker; a restore writes the old values back
   and records itself as a new version.
 
+## Phase 6 notes (public API, recusal, AI reviews)
+
+- /api/v1 is token-only: x-access-token checked against api_tokens by SHA-256.
+  The plaintext exists once, in the response to the create action. Shared
+  machinery (auth, pagination envelope, JSON errors) is app/lib/api.server.ts;
+  the session shape is api-sessions.server.ts so search and detail cannot drift.
+- POST /api/v1/event/:id/sessions is search unless the body carries "create",
+  which is what the documented surface implies. /docs/api is generated from the
+  same list of endpoints it documents, with a runnable curl per row.
+- eval_assignments.status gained "recused". sessionScoreMap and loadPlanResults
+  already filtered to "done", so recusal is excluded from aggregates by
+  construction; the results table reads both states so a submission everyone
+  recused from still gets a row instead of vanishing.
+- AI reviews (ai-reviews.server.ts) never mix into human aggregates. The persona
+  column stores "<persona>:<source>" so the UI can label a heuristic pass
+  without a migration.
+- Workers AI model names expire. WORKERS_AI_MODEL in ai.server.ts is the single
+  place to change it; `npx wrangler ai models` lists what is current. Both AI
+  features route their output through normalizeAiOutput, because a model may
+  return a string, a {response: string}, or a {response: object}.
+- Never swallow an AI failure silently. The deprecated-model outage was
+  invisible for months precisely because the fallback was clean.
+
 ## Phase 5 notes (speaker CRM)
 
 - The CRM is organization level and lives at /crm, deliberately outside
