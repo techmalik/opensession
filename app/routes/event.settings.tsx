@@ -1,9 +1,10 @@
 import { Form, useNavigation } from "react-router";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { Route } from "./+types/event.settings";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { uniqueSlug } from "../lib/events.server";
+import { FEATURED_EVENT_SLUG_KEY, featuredEventSlug, setSetting } from "../lib/settings.server";
 import { TIMEZONES } from "../lib/timezones";
 import { fromDateInputValue, toDateInputValue } from "../lib/format";
 import { events } from "../../database/schema";
@@ -28,7 +29,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const db = getDb();
   const event = await db.select().from(events).where(eq(events.id, Number(params.eventId))).get();
   if (!event) throw new Response("Event not found", { status: 404 });
-  return { event };
+
+  const activeEvents = await db
+    .select({ name: events.name, slug: events.slug })
+    .from(events)
+    .where(eq(events.status, "active"))
+    .orderBy(asc(events.name))
+    .all();
+
+  return { event, activeEvents, featuredSlug: await featuredEventSlug() };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -73,11 +82,24 @@ export async function action({ request, params }: Route.ActionArgs) {
     })
     .where(eq(events.id, eventId));
 
+  // The featured event is org level, saved from whichever event's settings you are on.
+  // A rename regenerates the slug, so carry the setting across when this event is the
+  // featured one; otherwise the landing page would fall back to latest-active.
+  const submittedFeatured = String(form.get("featuredEventSlug") ?? "").trim();
+  if (submittedFeatured) {
+    await setSetting(FEATURED_EVENT_SLUG_KEY, submittedFeatured === current.slug ? slug : submittedFeatured);
+  }
+
   return { errors: {}, saved: true };
 }
 
 export default function EventSettings({ loaderData, actionData, params }: Route.ComponentProps) {
-  const { event } = loaderData;
+  const { event, activeEvents, featuredSlug } = loaderData;
+  // Keep the current choice selectable even when it points at an event that is no
+  // longer active, so saving this form does not silently reassign it.
+  const featuredOptions = activeEvents.some((option) => option.slug === featuredSlug)
+    ? activeEvents
+    : [...activeEvents, { name: featuredSlug, slug: featuredSlug }];
   const errors = actionData?.errors ?? {};
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting";
@@ -149,6 +171,25 @@ export default function EventSettings({ loaderData, actionData, params }: Route.
                 <option value="active">Active</option>
                 <option value="draft">Draft</option>
                 <option value="archived">Archived</option>
+              </select>
+            </Field>
+
+            <Field
+              label="Featured event"
+              name="featuredEventSlug"
+              help="The event shown on the public landing page and at /sessions, /agenda, and the other short public URLs. Applies across all events."
+            >
+              <select
+                id="featuredEventSlug"
+                name="featuredEventSlug"
+                defaultValue={featuredSlug}
+                className={selectClass}
+              >
+                {featuredOptions.map((option) => (
+                  <option key={option.slug} value={option.slug}>
+                    {option.name}
+                  </option>
+                ))}
               </select>
             </Field>
 

@@ -24,6 +24,16 @@ export async function setSetting(key: string, value: unknown): Promise<void> {
     .onConflictDoUpdate({ target: settings.key, set: { valueJson: JSON.stringify(value), updatedAt: new Date() } });
 }
 
+export const FEATURED_EVENT_SLUG_KEY = "featured_event_slug";
+export const DEFAULT_FEATURED_EVENT_SLUG = "meridian-dev-summit-2027";
+
+/** The event the landing page and the /agenda-style alias routes resolve to.
+ *  Without this, any visitor who creates an event takes over the homepage. */
+export async function featuredEventSlug(): Promise<string> {
+  const value = await getSetting<string>(FEATURED_EVENT_SLUG_KEY, DEFAULT_FEATURED_EVENT_SLUG);
+  return typeof value === "string" && value ? value : DEFAULT_FEATURED_EVENT_SLUG;
+}
+
 export const EMBED_CACHE_VERSION_KEY = "embed_cache_version";
 
 /** Part of every embed URL. Bumping it changes the URL, so caches at the edge and in

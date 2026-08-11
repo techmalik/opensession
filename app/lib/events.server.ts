@@ -2,9 +2,10 @@
 // under a minute for the eval agent, so this does the setup an organizer would
 // otherwise have to click through.
 
-import { and, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { getDb } from "./db.server";
 import { slugify } from "./format";
+import { featuredEventSlug } from "./settings.server";
 import { emailTemplates, events, formats, levels, rooms, statuses, tracks } from "../../database/schema";
 
 /** The five system statuses, in pipeline order. Vocabulary is fixed by CLAUDE.md. */
@@ -42,6 +43,21 @@ export const DEFAULT_ROOMS: { name: string; capacity: number }[] = [
 ];
 
 export const DEFAULT_LEVELS = ["Beginner", "Intermediate", "Advanced"];
+
+/** The event the public landing page and alias routes are "about": the featured
+ *  event if it exists and is active, otherwise the most recently created active
+ *  event. Returns the full row; callers pick the fields they need. */
+export async function featuredActiveEvent() {
+  const db = getDb();
+  const slug = await featuredEventSlug();
+  const featured = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.slug, slug), eq(events.status, "active")))
+    .get();
+  if (featured) return featured;
+  return db.select().from(events).where(eq(events.status, "active")).orderBy(desc(events.createdAt)).get();
+}
 
 /** Appends -2, -3, ... until the slug is free. Excludes `exceptEventId` when editing. */
 export async function uniqueSlug(name: string, exceptEventId?: number): Promise<string> {

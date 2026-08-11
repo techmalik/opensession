@@ -1,11 +1,12 @@
 import { Form, Link } from "react-router";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Route } from "./+types/home";
 import { getDb } from "../lib/db.server";
 import { getUser } from "../lib/session.server";
+import { featuredActiveEvent } from "../lib/events.server";
 import { daysUntil, formatDate, formatDateRange } from "../lib/format";
 import { DEMO_ACCOUNTS } from "../lib/roles";
-import { events, forms } from "../../database/schema";
+import { forms } from "../../database/schema";
 
 /** The public widget surfaces, linked from the landing page so a visitor never has
  *  to guess an embed URL. */
@@ -29,23 +30,22 @@ export async function loader({ request }: Route.LoaderArgs) {
   const user = await getUser(request);
   const db = getDb();
 
-  // The most recently created active event is the one this install is "about".
-  const event = await db
-    .select({
-      id: events.id,
-      name: events.name,
-      slug: events.slug,
-      tagline: events.tagline,
-      description: events.description,
-      location: events.location,
-      timezone: events.timezone,
-      startsAt: events.startsAt,
-      endsAt: events.endsAt,
-    })
-    .from(events)
-    .where(eq(events.status, "active"))
-    .orderBy(desc(events.createdAt))
-    .get();
+  // The featured event (Settings > Featured event), so a visitor-created event
+  // cannot take over the homepage. Latest active is only the fallback.
+  const row = await featuredActiveEvent();
+  const event = row
+    ? {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        tagline: row.tagline,
+        description: row.description,
+        location: row.location,
+        timezone: row.timezone,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+      }
+    : undefined;
 
   const openForm = event
     ? await db
