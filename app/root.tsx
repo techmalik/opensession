@@ -1,4 +1,4 @@
-import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration, Link } from "react-router";
+import { Form, isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration, Link } from "react-router";
 
 import type { Route } from "./+types/root";
 // Self-hosted per DESIGN.md: no third-party font request on first paint.
@@ -23,8 +23,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
-  return <Outlet />;
+/** Reads the signed cookie only, no database round trip: all this needs is the flag
+ *  the demo buttons set. */
+export async function loader({ request }: Route.LoaderArgs) {
+  const { readSession } = await import("./lib/auth");
+  const { sessionSecret } = await import("./lib/db.server");
+  const session = await readSession(request, sessionSecret());
+  return { demo: session?.demo === true };
+}
+
+export default function App({ loaderData }: Route.ComponentProps) {
+  return (
+    <>
+      {loaderData?.demo ? (
+        <div className="border-b border-slate-200 bg-slate-50">
+          <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-2 px-4 py-1.5 sm:px-6">
+            <p className="text-[13px] text-slate-500">Demo account. Data resets periodically.</p>
+            <Form method="post" action="/logout">
+              <button type="submit" className="text-[13px] font-medium text-slate-500 hover:text-slate-900">
+                Leave the demo
+              </button>
+            </Form>
+          </div>
+        </div>
+      ) : null}
+      <Outlet />
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

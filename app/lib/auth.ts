@@ -31,6 +31,8 @@ export async function verifyPassword(password: string, stored: string): Promise<
 export interface SessionData {
   userId: number;
   role: "admin" | "organizer" | "evaluator" | "speaker";
+  /** Set only by the landing page's demo buttons, so the UI can say so. */
+  demo?: boolean;
   exp: number; // unix seconds
 }
 

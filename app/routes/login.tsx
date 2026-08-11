@@ -2,6 +2,7 @@ import { Form, Link, redirect, useNavigation } from "react-router";
 import { eq } from "drizzle-orm";
 import type { Route } from "./+types/login";
 import { createSessionCookie, verifyPassword } from "../lib/auth";
+import { landingFor } from "../lib/roles";
 import { getDb, sessionSecret } from "../lib/db.server";
 import { getUser } from "../lib/session.server";
 import { users } from "../../database/schema";
@@ -12,12 +13,6 @@ export function meta(): Route.MetaDescriptors {
 }
 
 /** Where to land after signing in, by role. */
-function landingFor(role: string): string {
-  if (role === "admin" || role === "organizer") return "/admin";
-  if (role === "evaluator") return "/review";
-  return "/portal";
-}
-
 function safeNext(raw: string | null): string | null {
   // Only same-origin paths. An absolute URL would be an open redirect, and so would
   // "//host" or "/\\host": browsers normalize backslashes to forward slashes.

@@ -1,9 +1,10 @@
-import { Link } from "react-router";
+import { Form, Link } from "react-router";
 import { and, asc, desc, eq } from "drizzle-orm";
 import type { Route } from "./+types/home";
 import { getDb } from "../lib/db.server";
 import { getUser } from "../lib/session.server";
 import { daysUntil, formatDate, formatDateRange } from "../lib/format";
+import { DEMO_ACCOUNTS } from "../lib/roles";
 import { events, forms } from "../../database/schema";
 
 /** The public widget surfaces, linked from the landing page so a visitor never has
@@ -55,11 +56,11 @@ export async function loader({ request }: Route.LoaderArgs) {
         .get()
     : undefined;
 
-  return { user, event, openForm: openForm ?? null };
+  return { user, event, openForm: openForm ?? null, demoAccounts: DEMO_ACCOUNTS };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { user, event, openForm } = loaderData;
+  const { user, event, openForm, demoAccounts } = loaderData;
   const closesIn = daysUntil(openForm?.closesAt ?? null);
   // daysUntil returns 0 only for past dates (a close later today still counts as 1).
   const formClosed = openForm?.closesAt != null && closesIn === 0;
@@ -124,6 +125,32 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             Create the first event
           </Link>
         </>
+      )}
+
+      {user ? null : (
+        <section aria-labelledby="demo-heading" className="mt-8 border-t border-slate-200 pt-6">
+          <h2 id="demo-heading" className="text-base font-semibold text-slate-900">
+            Try the demo
+          </h2>
+          <p className="mt-1 text-base text-slate-500">
+            Sign in to a populated example event as any role. No password needed.
+          </p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+            {demoAccounts.map((account) => (
+              <li key={account.key}>
+                <Form method="post" action={`/demo/${account.key}`}>
+                  <button
+                    type="submit"
+                    className="flex h-full w-full flex-col items-start rounded-md border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-accent hover:bg-slate-50"
+                  >
+                    <span className="text-base font-medium text-slate-900">{account.label}</span>
+                    <span className="mt-0.5 text-[13px] text-slate-500">{account.blurb}</span>
+                  </button>
+                </Form>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {event ? (

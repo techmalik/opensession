@@ -7,6 +7,9 @@ export default [
   route("login", "routes/login.tsx"),
   route("signup", "routes/signup.tsx"),
   route("logout", "routes/logout.tsx"),
+  // Landing-page demo buttons. POST only, and restricted to the three seeded
+  // demo accounts by app/lib/roles.ts.
+  route("demo/:role", "routes/demo.tsx"),
 
   // Public CFP: entry page, legacy submit path, and the live form portal.
   route("cfp/:eventSlug", "routes/cfp.tsx"),
