@@ -5,7 +5,7 @@ import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { formatDateRange } from "../lib/format";
 import { eventAccessFilter } from "../lib/events.server";
-import { events } from "../../database/schema";
+import { events, sessions } from "../../database/schema";
 import {
   Card,
   EmptyState,
@@ -46,13 +46,16 @@ export async function loader({ request }: Route.LoaderArgs) {
       startsAt: events.startsAt,
       endsAt: events.endsAt,
       status: events.status,
-      submissionCount: sql<number>`(
-        select count(*) from sessions
-        where sessions.event_id = ${events.id} and sessions.is_abstract = 1 and sessions.is_draft = 0
-      )`,
+      // A LEFT JOIN plus GROUP BY (rather than a correlated subquery referencing
+      // events.id) sidesteps a Drizzle/D1 quirk where a `${events.id}` interpolated
+      // inside a subquery on `sessions` renders as a bare "id" and resolves to
+      // sessions.id instead, since sessions has its own id column in scope.
+      submissionCount: sql<number>`count(case when ${sessions.isDraft} = 0 then 1 end)`,
     })
     .from(events)
+    .leftJoin(sessions, eq(sessions.eventId, events.id))
     .where(filters.length > 0 ? and(...filters) : undefined)
+    .groupBy(events.id)
     .orderBy(desc(events.createdAt))
     .all();
 

@@ -23,20 +23,23 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     .get();
   if (!event) throw new Response("Event not found", { status: 404 });
 
-  // Counts per status, including statuses with no submissions yet.
+  // Counts per status, including statuses with no submissions yet. A LEFT JOIN plus
+  // GROUP BY (rather than a correlated subquery referencing statuses.id) sidesteps a
+  // Drizzle/D1 quirk where a `${statuses.id}` interpolated inside a subquery on
+  // `sessions` renders as a bare "id" and resolves to sessions.id instead, since
+  // sessions has its own id column in scope.
   const statusCounts = await db
     .select({
       id: statuses.id,
       key: statuses.key,
       label: statuses.label,
       sort: statuses.sort,
-      count: sql<number>`(
-        select count(*) from sessions
-        where sessions.status_id = ${statuses.id} and sessions.is_abstract = 1 and sessions.is_draft = 0
-      )`,
+      count: sql<number>`count(case when ${sessions.isDraft} = 0 then 1 end)`,
     })
     .from(statuses)
+    .leftJoin(sessions, eq(sessions.statusId, statuses.id))
     .where(eq(statuses.eventId, eventId))
+    .groupBy(statuses.id)
     .orderBy(asc(statuses.sort))
     .all();
 
@@ -51,7 +54,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     })
     .from(sessions)
     .leftJoin(statuses, eq(sessions.statusId, statuses.id))
-    .where(and(eq(sessions.eventId, eventId), eq(sessions.isAbstract, true), eq(sessions.isDraft, false)))
+    .where(and(eq(sessions.eventId, eventId), eq(sessions.isDraft, false)))
     .orderBy(desc(sessions.submittedAt))
     .limit(8)
     .all();

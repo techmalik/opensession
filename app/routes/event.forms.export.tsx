@@ -5,7 +5,7 @@ import type { Route } from "./+types/event.forms.export";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { csvResponse, toCsv } from "../lib/format";
-import { forms } from "../../database/schema";
+import { forms, sessions } from "../../database/schema";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   await requireOrganizer(request);
@@ -25,12 +25,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       closesAt: forms.closesAt,
       submissionLimit: forms.submissionLimit,
       maxSpeakers: forms.maxSpeakers,
-      submissionCount: sql<number>`(
-        select count(*) from sessions where sessions.form_id = ${forms.id} and sessions.is_draft = 0
-      )`,
+      // See event.forms.tsx: a correlated subquery interpolating forms.id inside a
+      // sessions subquery resolves to sessions.id instead (Drizzle/D1 quirk), so this
+      // uses a LEFT JOIN + GROUP BY instead.
+      submissionCount: sql<number>`count(case when ${sessions.isDraft} = 0 then 1 end)`,
     })
     .from(forms)
+    .leftJoin(sessions, eq(sessions.formId, forms.id))
     .where(eq(forms.eventId, eventId))
+    .groupBy(forms.id)
     .orderBy(asc(forms.createdAt))
     .all();
 

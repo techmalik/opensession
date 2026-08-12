@@ -26,9 +26,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       maxEvals: evalPlans.maxEvalsPerSubmission,
       dueAt: evalPlans.dueAt,
       status: evalPlans.status,
-      reviewerCount: sql<number>`(select count(*) from eval_plan_reviewers where eval_plan_reviewers.plan_id = ${evalPlans.id})`,
-      assignmentCount: sql<number>`(select count(*) from eval_assignments where eval_assignments.plan_id = ${evalPlans.id})`,
-      doneCount: sql<number>`(select count(*) from eval_assignments where eval_assignments.plan_id = ${evalPlans.id} and eval_assignments.status = 'done')`,
+      // See event.evaluations.tsx: an unqualified ${evalPlans.id} inside a subquery
+      // on a table that also has its own "id" column resolves to that table's id
+      // (Drizzle/D1 quirk), so the reference is qualified explicitly here.
+      reviewerCount: sql<number>`(select count(*) from eval_plan_reviewers where eval_plan_reviewers.plan_id = ${sql.raw('"eval_plans"."id"')})`,
+      assignmentCount: sql<number>`(select count(*) from eval_assignments where eval_assignments.plan_id = ${sql.raw('"eval_plans"."id"')})`,
+      doneCount: sql<number>`(select count(*) from eval_assignments where eval_assignments.plan_id = ${sql.raw('"eval_plans"."id"')} and eval_assignments.status = 'done')`,
     })
     .from(evalPlans)
     .where(eq(evalPlans.eventId, eventId))

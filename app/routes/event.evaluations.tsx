@@ -43,14 +43,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       scaleType: evalPlans.scaleType,
       dueAt: evalPlans.dueAt,
       status: evalPlans.status,
+      // Each subquery's own table (eval_plan_reviewers / eval_assignments) has its own
+      // "id" column, so an interpolated ${evalPlans.id} renders as a bare "id" and a
+      // Drizzle/D1 quirk resolves it to that inner table's id instead of the outer
+      // eval_plans.id. Qualifying the reference explicitly avoids the collision.
       reviewerCount: sql<number>`(
-        select count(*) from eval_plan_reviewers where eval_plan_reviewers.plan_id = ${evalPlans.id}
+        select count(*) from eval_plan_reviewers where eval_plan_reviewers.plan_id = ${sql.raw('"eval_plans"."id"')}
       )`,
       assignmentCount: sql<number>`(
-        select count(*) from eval_assignments where eval_assignments.plan_id = ${evalPlans.id}
+        select count(*) from eval_assignments where eval_assignments.plan_id = ${sql.raw('"eval_plans"."id"')}
       )`,
       doneCount: sql<number>`(
-        select count(*) from eval_assignments where eval_assignments.plan_id = ${evalPlans.id} and eval_assignments.status = 'done'
+        select count(*) from eval_assignments where eval_assignments.plan_id = ${sql.raw('"eval_plans"."id"')} and eval_assignments.status = 'done'
       )`,
     })
     .from(evalPlans)

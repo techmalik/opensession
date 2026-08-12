@@ -6,7 +6,7 @@ import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { createBaselineFields } from "../lib/cfp.server";
 import { formatDate, slugify } from "../lib/format";
-import { events, forms } from "../../database/schema";
+import { events, forms, sessions } from "../../database/schema";
 import { Badge, Card, EmptyState, PageHeader, buttonPrimary, buttonSecondary, inputClass,
   inputSized, selectSized } from "../components/ui";
 
@@ -39,12 +39,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       opensAt: forms.opensAt,
       closesAt: forms.closesAt,
       submissionLimit: forms.submissionLimit,
-      submissionCount: sql<number>`(
-        select count(*) from sessions where sessions.form_id = ${forms.id} and sessions.is_draft = 0
-      )`,
+      // A LEFT JOIN plus GROUP BY (rather than a correlated subquery referencing
+      // forms.id) sidesteps a Drizzle/D1 quirk where a `${forms.id}` interpolated
+      // inside a subquery on `sessions` renders as a bare "id" and resolves to
+      // sessions.id instead, since sessions has its own id column in scope.
+      submissionCount: sql<number>`count(case when ${sessions.isDraft} = 0 then 1 end)`,
     })
     .from(forms)
+    .leftJoin(sessions, eq(sessions.formId, forms.id))
     .where(eq(forms.eventId, eventId))
+    .groupBy(forms.id)
     .orderBy(asc(forms.createdAt))
     .all();
 
