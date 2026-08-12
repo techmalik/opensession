@@ -137,6 +137,12 @@ npm run dev
 
 - AI review scores have no human override. A reviewer cannot edit or adjust an AI
   pass; AI output is stored separately and never enters a human aggregate.
+- Agenda conflicts are warned, not blocked. Double-booking a room or a person is
+  detected server-side on every render and surfaced, but the organizer can still save
+  it, because real programs sometimes need a deliberate overlap.
+- Contact merge is not reversible. It re-points event history, sessions, notes, and
+  mail onto the primary contact, drops rows that would collide with unique indexes,
+  and deletes the loser.
 - Embed configuration has no branding or color options, and no saved-embed list. You
   copy a snippet per widget.
 - No XML feed. JSON and iCal only.
@@ -145,7 +151,12 @@ npm run dev
   storage interface.
 - No payments of any kind.
 - English only. No localization layer.
+- No dark mode. DESIGN.md puts it out of scope, and half-shipping it looked worse than
+  not shipping it.
 - The Accelevents integration is best effort, written against their public docs.
+- No test suite. Verification is `npm run typecheck && npm run build` plus clicking
+  the flow, which is what the deadline allowed. The eval kit in `spec/` is the closest
+  thing to an integration test.
 
 ## Repository map
 
