@@ -229,9 +229,10 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
   and every filter toolbar in the product rendered full width. Sized controls
   use inputSized / selectSized (same styling, no width of their own) and the
   caller sets the width. Never add a width to inputClass again.
-- The admin shell main is `ml-[232px] min-w-0 flex-1`, not w-full. w-full is
-  100% of the row and the sidebar offset is added on top, so a wide table put
-  the whole page into a horizontal scroll and the fixed sidebar slid away.
+- The admin shell main is `min-w-0 flex-1`, not w-full: w-full is 100% of the
+  row, so a wide table put the whole page into a horizontal scroll. The sidebar
+  used to be fixed with `ml-[232px]` on main; it is sticky and in flow now (see
+  the Phase 8 notes), so main adds no margin for it.
 - The accent is #0b7b57 (hover #096646). The old #0d9166 measured 3.99:1
   against white in both directions and failed WCAG AA at normal text size,
   which Lighthouse flagged on the public pages. If the accent changes again,
@@ -249,3 +250,35 @@ B2B. No gradients, no glassmorphism, no emoji, no em dashes, no hype copy.
 - Keyboard triage on the submissions table listens on document and bails when
   the event target is an input, textarea, select, or contenteditable. Any new
   shortcut needs the same guard.
+
+## Phase 8 notes (navigation, layout, homepage)
+
+- Three shared pieces of chrome, all in components/ui.tsx. TopBar for signed-in
+  surfaces with no sidebar (/admin, /admin/new, /crm). AppBar for the portal and
+  the reviewer area, which stay free of organizer links on purpose. PublicHeader
+  for /cfp, /submit, /agenda, /e, /docs/api. Widgets get none of them: an embed
+  is chrome-free by design.
+- PublicHeader takes a role, not a user. getSessionRole in session.server.ts
+  reads it from the signed cookie with no database round trip. A page that
+  renders it must not be served from a shared cache while signed in: event-public
+  and agenda.public downgrade to `private, no-store` when a session exists.
+- Breadcrumbs (components/ui.tsx) is the only breadcrumb in the product. Twelve
+  pages used to hand-roll the same markup. Detail pages get one, per DESIGN.md.
+- Which admin pages run full width is a list of route ids in event.tsx and
+  crm.tsx (WIDE_ROUTES), not a guess from the path. Everything else reads at
+  960px. Add a dense table, add its route id.
+- The sidebar is `sticky top-0 h-screen`, not fixed: a fixed sidebar painted over
+  the demo banner root.tsx renders above the shell. Below `lg` it becomes a band
+  across the top with a sideways-scrolling nav row, because a 232px column left
+  143px of content at 375px and 536px at 768px.
+- Grid containers carry `[&>*]:min-w-0`. A grid item's automatic minimum is its
+  content, so one wide table inside a card stretches its column past the
+  viewport. Every table lives inside an `overflow-x-auto`.
+- The homepage has exactly two button sizes (ctaSmall 36px, ctaLarge 44px and
+  its two variants) and hairline borders with no shadow behind them. The mockup
+  table mirrors event.submissions.tsx: 13px body, 40px rows, dot badges. Keep
+  them in step.
+- The `.reveal` animation is behind `@media (scripting: enabled)`. The hidden
+  state is server-rendered and only script clears it, so without that query a
+  visitor whose JavaScript never runs sees a homepage blank below the hero.
+- Deployed Lighthouse mobile performance on `/` is 99 (LCP 1.6s, CLS 0, TBT 0).
