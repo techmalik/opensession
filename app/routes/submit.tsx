@@ -6,7 +6,7 @@
 // speakers, review. Drafts save and resume. Every mutation re-checks the open window
 // server-side: a closed form rejects the POST no matter what the page showed.
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Form, Link, redirect, useNavigation } from "react-router";
 import { and, asc, eq } from "drizzle-orm";
 import type { Route } from "./+types/submit";
@@ -39,7 +39,7 @@ import {
   tracks,
   users,
 } from "../../database/schema";
-import { ErrorSummary } from "../components/ui";
+import { ErrorSummary, PublicHeader } from "../components/ui";
 import { ROLE_LABEL } from "../lib/labels";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -843,6 +843,26 @@ function StepHeader({ current }: { current: number }) {
   );
 }
 
+/** Every branch of this page (closed, not open, limit reached, thank you, and the
+ *  live form) renders through here, so the public header is identical on all of
+ *  them and there is always a way back to the event. */
+function PublicShell({
+  event,
+  role,
+  children,
+}: {
+  event: { name: string; slug: string | null };
+  role: string | null;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <PublicHeader eventName={event.name} eventSlug={event.slug} role={role} />
+      <main className="mx-auto w-full max-w-[720px] px-6 py-12">{children}</main>
+    </>
+  );
+}
+
 export default function Submit({ loaderData, actionData }: Route.ComponentProps) {
   const {
     event,
@@ -892,7 +912,7 @@ export default function Submit({ loaderData, actionData }: Route.ComponentProps)
   // ---- closed / not open ----
   if (state !== "open" && !done) {
     return (
-      <main className="mx-auto w-full max-w-[720px] px-6 py-12">
+      <PublicShell event={event} role={user?.role ?? null}>
         {branding}
         <div className="mt-8 rounded-lg border border-slate-200 p-5">
           <p className="text-base text-slate-900">
@@ -915,14 +935,14 @@ export default function Submit({ loaderData, actionData }: Route.ComponentProps)
             Back to the event
           </Link>
         </nav>
-      </main>
+      </PublicShell>
     );
   }
 
   // ---- thank-you screen ----
   if (done && current) {
     return (
-      <main className="mx-auto w-full max-w-[720px] px-6 py-12">
+      <PublicShell event={event} role={user?.role ?? null}>
         {branding}
         <div className="mt-8 rounded-lg border border-slate-200 p-5">
           <h2 className="text-xl font-semibold tracking-tight text-slate-900">Thanks, your proposal is in.</h2>
@@ -945,14 +965,14 @@ export default function Submit({ loaderData, actionData }: Route.ComponentProps)
             </Link>
           </div>
         </div>
-      </main>
+      </PublicShell>
     );
   }
 
   // ---- logged out: branding, auth, live preview ----
   if (!user) {
     return (
-      <main className="mx-auto w-full max-w-[720px] px-6 py-12">
+      <PublicShell event={event} role={null}>
         {branding}
         {form.welcomeHtml ? (
           <div className="mt-6 space-y-3 text-base leading-relaxed text-slate-900" dangerouslySetInnerHTML={{ __html: form.welcomeHtml }} />
@@ -981,14 +1001,14 @@ export default function Submit({ loaderData, actionData }: Route.ComponentProps)
             Back to the event
           </Link>
         </nav>
-      </main>
+      </PublicShell>
     );
   }
 
   // ---- logged in, no active submission: start screen ----
   if (!current) {
     return (
-      <main className="mx-auto w-full max-w-[720px] px-6 py-12">
+      <PublicShell event={event} role={user?.role ?? null}>
         {branding}
         {form.welcomeHtml ? (
           <div className="mt-6 space-y-3 text-base leading-relaxed text-slate-900" dangerouslySetInnerHTML={{ __html: form.welcomeHtml }} />
@@ -1060,7 +1080,7 @@ export default function Submit({ loaderData, actionData }: Route.ComponentProps)
             Your portal
           </Link>
         </nav>
-      </main>
+      </PublicShell>
     );
   }
 
@@ -1069,7 +1089,7 @@ export default function Submit({ loaderData, actionData }: Route.ComponentProps)
   const editingSubmitted = !current.isDraft;
 
   return (
-    <main className="mx-auto w-full max-w-[720px] px-6 py-12">
+    <PublicShell event={event} role={user?.role ?? null}>
       {branding}
 
       {current.isDraft ? (
@@ -1268,7 +1288,7 @@ export default function Submit({ loaderData, actionData }: Route.ComponentProps)
           ) : null}
         </div>
       ) : null}
-    </main>
+    </PublicShell>
   );
 }
 

@@ -3,7 +3,7 @@
 // Anonymized plans strip speaker identity; other evaluators' scores are never
 // fetched here, blind or not.
 
-import { Form, Link, redirect, useNavigation } from "react-router";
+import { Form, redirect, useNavigation } from "react-router";
 import { and, asc, eq } from "drizzle-orm";
 import type { Route } from "./+types/review.assignment";
 import { getDb } from "../lib/db.server";
@@ -24,7 +24,7 @@ import {
   sessions,
   tracks,
 } from "../../database/schema";
-import { AppBar, Card, ErrorSummary, buttonPrimary, selectClass, textareaClass } from "../components/ui";
+import { AppBar, Breadcrumbs, Card, ErrorSummary, buttonPrimary, selectClass, textareaClass } from "../components/ui";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: loaderData ? `Review: ${loaderData.submission.title}` : "Review" }];
@@ -254,14 +254,8 @@ export default function ReviewAssignment({ loaderData, actionData }: Route.Compo
     <div className="min-h-screen bg-slate-50">
       <AppBar title="OpenSession Review" userName={user.name} homeTo="/review" />
 
-      <main className="mx-auto w-full max-w-[1100px] px-6 py-8">
-        <div className="mb-2 text-[13px]">
-          <Link to="/review" className="text-slate-500 hover:text-slate-900">
-            Your review queue
-          </Link>
-          <span className="mx-1 text-slate-400">/</span>
-          <span className="text-slate-900">{submission.friendlyId}</span>
-        </div>
+      <main className="mx-auto w-full max-w-[960px] px-6 py-8">
+        <Breadcrumbs items={[{ to: "/review", label: "Your review queue" }, { label: submission.friendlyId }]} />
 
         <h1 className="text-xl font-semibold tracking-tight text-slate-900">{submission.title}</h1>
         <p className="mt-1 text-sm text-slate-500">

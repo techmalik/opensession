@@ -27,6 +27,7 @@ import {
 } from "../../database/schema";
 import {
   ApprovalBadge,
+  Breadcrumbs,
   Card,
   ErrorNotice,
   Field,
@@ -271,13 +272,7 @@ export default function SpeakerDetail({ loaderData, actionData, params }: Route.
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`${base}/speakers`} className="text-slate-500 hover:text-slate-900">
-          Speakers
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">{name}</span>
-      </div>
+      <Breadcrumbs items={[{ to: `${base}/speakers`, label: "Speakers" }, { label: name }]} />
 
       <PageHeader
         title={name}

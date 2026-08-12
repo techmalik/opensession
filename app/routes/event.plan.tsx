@@ -24,6 +24,7 @@ import {
 } from "../../database/schema";
 import {
   Badge,
+  Breadcrumbs,
   Card,
   Field,
   PageHeader,
@@ -436,13 +437,7 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`/admin/${params.eventId}/evaluations`} className="text-slate-500 hover:text-slate-900">
-          Evaluations
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">{plan.name}</span>
-      </div>
+      <Breadcrumbs items={[{ to: `/admin/${params.eventId}/evaluations`, label: "Evaluations" }, { label: plan.name }]} />
 
       <PageHeader
         title={plan.name}
@@ -463,7 +458,7 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
         <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">{actionData.notice}</div>
       ) : null}
 
-      <div className="grid max-w-[1100px] gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <Card className="p-4">
           <h2 className="text-sm font-semibold text-slate-900">Settings</h2>
           <Form method="post" className="mt-4 space-y-4">
@@ -629,7 +624,7 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
         </Card>
       </div>
 
-      <Card className="mt-4 max-w-[1100px] p-4">
+      <Card className="mt-4 p-4">
         <h2 className="text-sm font-semibold text-slate-900">Reviewer pool for this round</h2>
         <p className="mt-1 text-[13px] text-slate-500">
           Pool membership is per round: an evaluator in round {plan.round} is not automatically in other rounds.
@@ -706,7 +701,7 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
         </div>
       </Card>
 
-      <Card className="mt-4 max-w-[1100px]">
+      <Card className="mt-4">
         <div className="border-b border-slate-200 px-4 py-2.5">
           <h2 className="text-sm font-semibold text-slate-900">Assignments</h2>
           <p className="mt-0.5 text-[13px] text-slate-500">

@@ -11,7 +11,7 @@ import { requireOrganizer } from "../lib/session.server";
 import { renderTemplate, sendEmail } from "../lib/email";
 import { buildIcs } from "../lib/ics";
 import { contacts, events, sessionParticipants, sessions, statuses } from "../../database/schema";
-import { Card, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, textareaClass } from "../components/ui";
+import { Breadcrumbs, Card, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, textareaClass } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Send decision emails" }];
@@ -258,13 +258,7 @@ export default function SendDecisions({ loaderData, actionData, params }: Route.
   if (!queue) {
     return (
       <>
-        <div className="mb-2 text-[13px]">
-          <Link to={`/admin/${params.eventId}/submissions`} className="text-slate-500 hover:text-slate-900">
-            Submissions
-          </Link>
-          <span className="mx-1 text-slate-400">/</span>
-          <span className="text-slate-900">Send decision emails</span>
-        </div>
+        <Breadcrumbs items={[{ to: `/admin/${params.eventId}/submissions`, label: "Submissions" }, { label: "Send decision emails" }]} />
 
         <PageHeader
           title="Send decision emails"
@@ -305,13 +299,7 @@ export default function SendDecisions({ loaderData, actionData, params }: Route.
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`/admin/${params.eventId}/submissions/send-decisions`} className="text-slate-500 hover:text-slate-900">
-          Send decision emails
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">{isAccept ? "Acceptances" : "Declines"}</span>
-      </div>
+      <Breadcrumbs items={[{ to: `/admin/${params.eventId}/submissions/send-decisions`, label: "Send decision emails" }, { label: isAccept ? "Acceptances" : "Declines" }]} />
 
       <PageHeader
         title={isAccept ? "Send acceptance emails" : "Send decline emails"}

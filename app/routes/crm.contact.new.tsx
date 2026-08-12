@@ -7,7 +7,7 @@ import type { Route } from "./+types/crm.contact.new";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { contacts } from "../../database/schema";
-import { Card, ErrorNotice, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, textareaClass } from "../components/ui";
+import { Breadcrumbs, Card, ErrorNotice, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, textareaClass } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Add contact" }];
@@ -54,13 +54,7 @@ export async function action({ request }: Route.ActionArgs) {
 export default function CrmNewContact({ actionData }: Route.ComponentProps) {
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to="/crm/contacts" className="text-slate-500 hover:text-slate-900">
-          Directory
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">Add contact</span>
-      </div>
+      <Breadcrumbs items={[{ to: "/crm/contacts", label: "Directory" }, { label: "Add contact" }]} />
 
       <PageHeader title="Add contact" description="Goes into the org database, not onto any event until you push it." />
 

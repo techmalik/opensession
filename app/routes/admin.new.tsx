@@ -5,9 +5,11 @@ import { createEvent } from "../lib/events.server";
 import { TIMEZONES } from "../lib/timezones";
 import { fromDateInputValue } from "../lib/format";
 import {
+  Breadcrumbs,
   Field,
   ErrorSummary,
   PageHeader,
+  TopBar,
   buttonPrimary,
   buttonSecondary,
   inputClass,
@@ -20,8 +22,8 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireOrganizer(request);
-  return null;
+  const user = await requireOrganizer(request);
+  return { user };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -55,7 +57,7 @@ export async function action({ request }: Route.ActionArgs) {
   return redirect(`/admin/${eventId}`);
 }
 
-export default function NewEvent({ actionData }: Route.ComponentProps) {
+export default function NewEvent({ loaderData, actionData }: Route.ComponentProps) {
   const errors = actionData?.errors ?? {};
   const values = actionData?.values;
   const navigation = useNavigation();
@@ -63,20 +65,11 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="flex h-14 items-center px-6">
-          <Link to="/admin" className="text-[13px] font-medium text-slate-500 hover:text-slate-900">
-            Events
-          </Link>
-          <span className="mx-2 text-slate-300" aria-hidden="true">
-            /
-          </span>
-          <span className="text-[13px] text-slate-900">Create event</span>
-        </div>
-      </header>
+      <TopBar section="Create event" userName={loaderData.user.name} homeTo="/admin" />
 
       <main className="p-6">
         <div className="max-w-[640px]">
+          <Breadcrumbs items={[{ to: "/admin", label: "Events" }, { label: "Create event" }]} />
           <PageHeader title="Create event" description="You can change any of this later in Settings." />
 
           <Form method="post" className="space-y-4">

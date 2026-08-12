@@ -2,27 +2,39 @@
 // database, the sourcing pipeline, segments, and custom fields belong to the org,
 // not to one conference.
 
-import { Form, Link, NavLink, Outlet, isRouteErrorResponse, useRouteError } from "react-router";
+import { Link, NavLink, Outlet, isRouteErrorResponse, useMatches, useRouteError } from "react-router";
 import type { Route } from "./+types/crm";
 import { requireOrganizer } from "../lib/session.server";
 import { CRM_NAV } from "../lib/crm-view";
+import { TopBar } from "../components/ui";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireOrganizer(request);
   return { user };
 }
 
+/** The directory is the CRM's dense table and keeps the full width. Every other CRM
+ *  page is a form, a dashboard, or a record, and reads at 960px. */
+const WIDE_ROUTES = new Set(["routes/crm.contacts", "routes/crm.duplicates"]);
+
 export default function CrmShell({ loaderData }: Route.ComponentProps) {
   const { user } = loaderData;
+  const matches = useMatches();
+  const wide = WIDE_ROUTES.has(matches[matches.length - 1]?.id ?? "");
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
-          <Link to="/crm" className="text-sm font-semibold text-slate-900">
-            Speaker CRM
+      <TopBar
+        section="Speaker CRM"
+        userName={user.name}
+        homeTo="/admin"
+        actions={
+          <Link to="/admin" className="text-[13px] text-slate-500 hover:text-slate-900">
+            Events
           </Link>
-          <nav aria-label="CRM sections" className="flex flex-1 flex-wrap items-center gap-1">
+        }
+        nav={
+          <nav aria-label="CRM sections" className="-mx-2 flex flex-wrap items-center gap-1 py-1.5">
             {CRM_NAV.map((item) => (
               <NavLink
                 key={item.to}
@@ -38,21 +50,10 @@ export default function CrmShell({ loaderData }: Route.ComponentProps) {
               </NavLink>
             ))}
           </nav>
-          <div className="flex items-center gap-4">
-            <Link to="/admin" className="text-[13px] text-slate-500 hover:text-slate-900">
-              Events
-            </Link>
-            <span className="text-[13px] text-slate-500">{user.name}</span>
-            <Form method="post" action="/logout">
-              <button type="submit" className="text-[13px] font-medium text-slate-500 hover:text-slate-900">
-                Sign out
-              </button>
-            </Form>
-          </div>
-        </div>
-      </header>
+        }
+      />
 
-      <main className="mx-auto w-full max-w-[1200px] p-6">
+      <main className={`mx-auto w-full p-6 ${wide ? "max-w-[1200px]" : "max-w-[960px]"}`}>
         <Outlet />
       </main>
     </div>
@@ -71,12 +72,17 @@ export function ErrorBoundary() {
       <p className="mt-1 text-sm text-slate-500">
         {is404 ? "That record does not exist, or it was merged into another one." : "Try again, or go back to the directory."}
       </p>
-      <Link
-        to="/crm/contacts"
-        className="mt-4 inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50"
-      >
-        Back to the directory
-      </Link>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Link to="/crm/contacts" className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50">
+          Back to the directory
+        </Link>
+        <Link to="/admin" className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50">
+          Events
+        </Link>
+        <Link to="/" className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50">
+          Go to the start
+        </Link>
+      </div>
     </main>
   );
 }

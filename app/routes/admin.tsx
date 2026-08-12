@@ -9,6 +9,7 @@ import {
   Card,
   EmptyState,
   PageHeader,
+  TopBar,
   buttonPrimary,
   buttonSecondary,
   inputSized,
@@ -78,19 +79,7 @@ export default function AdminEvents({ loaderData, actionData }: Route.ComponentP
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="flex h-14 items-center justify-between px-6">
-          <span className="text-sm font-semibold tracking-tight text-slate-900">OpenSession</span>
-          <div className="flex items-center gap-3">
-            <span className="text-[13px] text-slate-500">{user.name}</span>
-            <Form method="post" action="/logout">
-              <button type="submit" className="text-[13px] font-medium text-slate-500 hover:text-slate-900">
-                Sign out
-              </button>
-            </Form>
-          </div>
-        </div>
-      </header>
+      <TopBar section="Events" userName={user.name} homeTo="/admin" />
 
       <main className="p-6">
         <PageHeader

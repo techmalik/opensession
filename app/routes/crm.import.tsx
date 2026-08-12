@@ -7,7 +7,7 @@ import type { Route } from "./+types/crm.import";
 import { requireOrganizer } from "../lib/session.server";
 import { applyImport, previewImport } from "../lib/speakers.server";
 import { parseCsv } from "../lib/format";
-import { Card, ErrorNotice, Field, Notice, PageHeader, buttonPrimary, buttonSecondary } from "../components/ui";
+import { Breadcrumbs, Card, ErrorNotice, Field, Notice, PageHeader, buttonPrimary, buttonSecondary } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Import contacts" }];
@@ -70,13 +70,7 @@ export default function CrmImport({ actionData }: Route.ComponentProps) {
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to="/crm/contacts" className="text-slate-500 hover:text-slate-900">
-          Directory
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">Import CSV</span>
-      </div>
+      <Breadcrumbs items={[{ to: "/crm/contacts", label: "Directory" }, { label: "Import CSV" }]} />
 
       <PageHeader
         title="Import contacts"

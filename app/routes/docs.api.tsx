@@ -4,6 +4,8 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/docs.api";
 import { appBaseUrl } from "../lib/db.server";
+import { getSessionRole } from "../lib/session.server";
+import { PublicHeader } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [
@@ -12,8 +14,8 @@ export function meta(): Route.MetaDescriptors {
   ];
 }
 
-export async function loader() {
-  return { baseUrl: appBaseUrl() };
+export async function loader({ request }: Route.LoaderArgs) {
+  return { baseUrl: appBaseUrl(), role: await getSessionRole(request) };
 }
 
 interface Endpoint {
@@ -124,83 +126,86 @@ function Block({ children }: { children: string }) {
 }
 
 export default function ApiDocs({ loaderData }: Route.ComponentProps) {
-  const { baseUrl } = loaderData;
+  const { baseUrl, role } = loaderData;
 
   return (
-    <main className="mx-auto w-full max-w-[820px] px-6 py-16">
-      <p className="text-[13px] font-medium tracking-wide text-slate-500">OpenSession</p>
-      <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight text-slate-900">API</h1>
-      <p className="mt-2 text-base leading-relaxed text-slate-500">
-        A JSON API under <code className="font-mono text-[15px]">/api/v1</code>, authenticated with an{" "}
-        <code className="font-mono text-[15px]">x-access-token</code> header. No cookie, no session: a token is the whole
-        credential.
-      </p>
-
-      <section className="mt-8">
-        <h2 className="text-base font-semibold text-slate-900">Getting a token</h2>
-        <p className="mt-1 text-base leading-relaxed text-slate-900">
-          Create one in an event's admin under Settings, API. The token is shown once, at creation. Only its hash is
-          stored, so it cannot be recovered later, only revoked and replaced.
+    <>
+      <PublicHeader role={role} width="max-w-[820px]" />
+      <main className="mx-auto w-full max-w-[820px] px-6 py-16">
+        <p className="text-[13px] font-medium tracking-wide text-slate-500">Reference</p>
+        <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight text-slate-900">API</h1>
+        <p className="mt-2 text-base leading-relaxed text-slate-500">
+          A JSON API under <code className="font-mono text-[15px]">/api/v1</code>, authenticated with an{" "}
+          <code className="font-mono text-[15px]">x-access-token</code> header. No cookie, no session: a token is the whole
+          credential.
         </p>
-        <Block>{`export TOKEN=osk_...\ncurl -H "x-access-token: $TOKEN" "${baseUrl}/api/v1/events"`}</Block>
-      </section>
 
-      <section className="mt-8">
-        <h2 className="text-base font-semibold text-slate-900">Shape of a response</h2>
-        <p className="mt-1 text-base leading-relaxed text-slate-900">
-          Collections share one envelope. Single records come back as{" "}
-          <code className="font-mono text-[15px]">{`{ "data": { ... } }`}</code>.
-        </p>
-        <Block>{`{
-  "data": [ ... ],
-  "page": 1,
-  "pageSize": 25,
-  "total": 42,
-  "totalPages": 2
-}`}</Block>
-        <p className="mt-2 text-base leading-relaxed text-slate-900">
-          Paginate with <code className="font-mono text-[15px]">page</code> and{" "}
-          <code className="font-mono text-[15px]">pageSize</code>, as query parameters or in a POST body. pageSize is
-          capped at 100.
-        </p>
-      </section>
+        <section className="mt-8">
+          <h2 className="text-base font-semibold text-slate-900">Getting a token</h2>
+          <p className="mt-1 text-base leading-relaxed text-slate-900">
+            Create one in an event's admin under Settings, API. The token is shown once, at creation. Only its hash is
+            stored, so it cannot be recovered later, only revoked and replaced.
+          </p>
+          <Block>{`export TOKEN=osk_...\ncurl -H "x-access-token: $TOKEN" "${baseUrl}/api/v1/events"`}</Block>
+        </section>
 
-      <section className="mt-8">
-        <h2 className="text-base font-semibold text-slate-900">Errors</h2>
-        <p className="mt-1 text-base leading-relaxed text-slate-900">
-          Errors are JSON with a stable code, never an HTML page.
-        </p>
-        <Block>{`{ "error": { "code": "invalid_token", "message": "That access token is not valid." } }`}</Block>
-        <p className="mt-2 text-base leading-relaxed text-slate-900">
-          401 missing or invalid token, 404 unknown event or record, 405 wrong method, 422 the body was understood but
-          rejected, 400 the body was not valid JSON.
-        </p>
-      </section>
+        <section className="mt-8">
+          <h2 className="text-base font-semibold text-slate-900">Shape of a response</h2>
+          <p className="mt-1 text-base leading-relaxed text-slate-900">
+            Collections share one envelope. Single records come back as{" "}
+            <code className="font-mono text-[15px]">{`{ "data": { ... } }`}</code>.
+          </p>
+          <Block>{`{
+    "data": [ ... ],
+    "page": 1,
+    "pageSize": 25,
+    "total": 42,
+    "totalPages": 2
+  }`}</Block>
+          <p className="mt-2 text-base leading-relaxed text-slate-900">
+            Paginate with <code className="font-mono text-[15px]">page</code> and{" "}
+            <code className="font-mono text-[15px]">pageSize</code>, as query parameters or in a POST body. pageSize is
+            capped at 100.
+          </p>
+        </section>
 
-      <section className="mt-10">
-        <h2 className="text-base font-semibold text-slate-900">Endpoints</h2>
-        <ul className="mt-4 space-y-6">
-          {ENDPOINTS.map((endpoint, index) => (
-            <li key={index} className="border-t border-slate-200 pt-4">
-              <p className="flex flex-wrap items-baseline gap-2">
-                <span className="font-mono text-xs font-semibold text-slate-500">{endpoint.method}</span>
-                <code className="font-mono text-[15px] text-slate-900">{endpoint.path}</code>
-              </p>
-              <p className="mt-1 text-base leading-relaxed text-slate-500">{endpoint.description}</p>
-              <Block>{endpoint.example(baseUrl)}</Block>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section className="mt-8">
+          <h2 className="text-base font-semibold text-slate-900">Errors</h2>
+          <p className="mt-1 text-base leading-relaxed text-slate-900">
+            Errors are JSON with a stable code, never an HTML page.
+          </p>
+          <Block>{`{ "error": { "code": "invalid_token", "message": "That access token is not valid." } }`}</Block>
+          <p className="mt-2 text-base leading-relaxed text-slate-900">
+            401 missing or invalid token, 404 unknown event or record, 405 wrong method, 422 the body was understood but
+            rejected, 400 the body was not valid JSON.
+          </p>
+        </section>
 
-      <nav className="mt-10 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-200 pt-6 text-base">
-        <Link to="/" className="font-medium text-accent hover:underline">
-          Back to the event
-        </Link>
-        <Link to="/admin" className="text-slate-500 hover:text-slate-900">
-          Organizer dashboard
-        </Link>
-      </nav>
-    </main>
+        <section className="mt-10">
+          <h2 className="text-base font-semibold text-slate-900">Endpoints</h2>
+          <ul className="mt-4 space-y-6">
+            {ENDPOINTS.map((endpoint, index) => (
+              <li key={index} className="border-t border-slate-200 pt-4">
+                <p className="flex flex-wrap items-baseline gap-2">
+                  <span className="font-mono text-xs font-semibold text-slate-500">{endpoint.method}</span>
+                  <code className="font-mono text-[15px] text-slate-900">{endpoint.path}</code>
+                </p>
+                <p className="mt-1 text-base leading-relaxed text-slate-500">{endpoint.description}</p>
+                <Block>{endpoint.example(baseUrl)}</Block>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <nav className="mt-10 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-200 pt-6 text-base">
+          <Link to="/" className="font-medium text-accent hover:underline">
+            Back to the event
+          </Link>
+          <Link to="/admin" className="text-slate-500 hover:text-slate-900">
+            Organizer dashboard
+          </Link>
+        </nav>
+      </main>
+    </>
   );
 }

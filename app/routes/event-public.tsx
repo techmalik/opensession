@@ -4,11 +4,13 @@
 // only ever feature one.
 
 import { and, asc, eq } from "drizzle-orm";
-import { data, Link } from "react-router";
+import { data } from "react-router";
 import type { Route } from "./+types/event-public";
 import { getDb } from "../lib/db.server";
+import { getSessionRole } from "../lib/session.server";
 import { events, forms } from "../../database/schema";
 import { EventOverview } from "../components/event-public";
+import { PublicHeader } from "../components/ui";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData?.event) return [{ title: "Event | OpenSession" }];
@@ -25,7 +27,8 @@ export function headers({ loaderHeaders }: Route.HeadersArgs) {
   return loaderHeaders;
 }
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const role = await getSessionRole(request);
   const db = getDb();
   const event = await db
     .select({
@@ -51,23 +54,24 @@ export async function loader({ params }: Route.LoaderArgs) {
     .orderBy(asc(forms.closesAt))
     .get();
 
+  // The header changes with the reader once someone is signed in, so a signed-in
+  // response must never land in a shared cache. Logged out, which is nearly every
+  // visit, the page is still cacheable for five minutes.
   return data(
-    { event, openForm: openForm ?? null },
-    { headers: { "Cache-Control": "public, max-age=300" } }
+    { event, openForm: openForm ?? null, role },
+    { headers: { "Cache-Control": role ? "private, no-store" : "public, max-age=300" } }
   );
 }
 
 export default function EventPublic({ loaderData }: Route.ComponentProps) {
-  const { event, openForm } = loaderData;
+  const { event, openForm, role } = loaderData;
 
   return (
-    <main className="mx-auto w-full max-w-[720px] px-6 py-16">
-      <p className="text-[13px] font-medium tracking-wide text-slate-500">
-        <Link to="/" className="hover:text-slate-900">
-          OpenSession
-        </Link>
-      </p>
-      <EventOverview event={event} openForm={openForm} />
-    </main>
+    <>
+      <PublicHeader role={role} />
+      <main className="mx-auto w-full max-w-[720px] px-6 py-16">
+        <EventOverview event={event} openForm={openForm} />
+      </main>
+    </>
   );
 }

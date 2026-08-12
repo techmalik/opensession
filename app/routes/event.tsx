@@ -1,4 +1,4 @@
-import { Form, Link, NavLink, Outlet, isRouteErrorResponse, useRouteError } from "react-router";
+import { Form, Link, NavLink, Outlet, isRouteErrorResponse, useMatches, useRouteError } from "react-router";
 import { asc, eq } from "drizzle-orm";
 import type { Route } from "./+types/event";
 import { getDb } from "../lib/db.server";
@@ -55,9 +55,24 @@ const NAV_GROUPS: { label: string | null; items: { to: string; label: string; en
   },
 ];
 
+/** Pages whose tables genuinely need the full content area. Everything else reads at
+ *  960px, so a settings form and a dashboard are not 1200px of white space with a
+ *  paragraph in the corner. Route ids, not paths: a renamed URL cannot silently drop
+ *  a table back to the reading width. */
+const WIDE_ROUTES = new Set([
+  "routes/event.submissions",
+  "routes/event.speakers",
+  "routes/event.agenda",
+  "routes/event.content.review",
+  "routes/event.plan.results",
+  "routes/event.agenda.assist",
+]);
+
 export default function EventShell({ loaderData }: Route.ComponentProps) {
   const { user, event, allEvents } = loaderData;
   const base = `/admin/${event.id}`;
+  const matches = useMatches();
+  const wide = WIDE_ROUTES.has(matches[matches.length - 1]?.id ?? "");
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -124,6 +139,25 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
                 ))}
               </div>
             ))}
+
+            {/* Everything an organizer reaches from an event but that is not scoped
+                to it: the org-level CRM, the event's own public page, and the API
+                reference. Absolute paths, so they sit outside the NavLink groups. */}
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              {[
+                { to: "/crm", label: "Speaker CRM" },
+                ...(event.slug ? [{ to: `/e/${event.slug}`, label: "Public page" }] : []),
+                { to: "/docs/api", label: "API docs" },
+              ].map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="block rounded-md px-2 py-1.5 text-[13px] text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </nav>
 
           <div className="border-t border-slate-200 p-3">
@@ -141,7 +175,9 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
             232px sidebar offset is added on top of it, so a wide table pushed the
             whole page into a horizontal scroll and the fixed sidebar slid away. */}
         <main className="ml-[232px] min-w-0 flex-1 p-6">
-          <Outlet />
+          <div className={wide ? "" : "mx-auto w-full max-w-[960px]"}>
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
@@ -164,12 +200,14 @@ export function ErrorBoundary() {
             ? error.data || error.statusText
             : "Try again, or go back to your events."}
       </p>
-      <Link
-        to="/admin"
-        className="mt-4 inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50"
-      >
-        Back to events
-      </Link>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Link to="/admin" className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50">
+          Back to events
+        </Link>
+        <Link to="/" className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50">
+          Go to the start
+        </Link>
+      </div>
     </main>
   );
 }

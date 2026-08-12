@@ -4,6 +4,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Form, Link, useNavigation } from "react-router";
 import { PUBLIC_STATE_LABEL, type PublicState } from "../lib/labels";
+import { homeLabelFor, landingFor } from "../lib/roles";
+import { LogoMark } from "./brand";
 
 /** The one loading state in the product. DESIGN.md: no skeleton shimmer, and
  *  anything that resolves under 200ms just renders, so the bar is delayed rather
@@ -278,6 +280,127 @@ export function AppBar({ title, userName, homeTo }: { title: string; userName: s
               Sign out
             </button>
           </Form>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/** Slim top bar for signed-in surfaces that have no sidebar of their own: the events
+ *  list, event creation, and the CRM. The wordmark always goes to the role home, so
+ *  no signed-in page is a dead end. `nav` renders as a second row inside the same
+ *  header, which keeps section links off the identity row at 768px. */
+export function TopBar({
+  section,
+  userName,
+  homeTo,
+  actions,
+  nav,
+}: {
+  section: string;
+  userName: string;
+  homeTo: string;
+  actions?: ReactNode;
+  nav?: ReactNode;
+}) {
+  return (
+    <header className="border-b border-slate-200 bg-white">
+      <div className="flex h-14 items-center gap-2 px-4 sm:px-6">
+        <Link to={homeTo} className="inline-flex shrink-0 items-center gap-2">
+          <LogoMark size={20} />
+          <span className="text-sm font-semibold tracking-tight text-slate-900">OpenSession</span>
+        </Link>
+        <span className="shrink-0 text-slate-300" aria-hidden="true">
+          /
+        </span>
+        <span className="truncate text-[13px] text-slate-900">{section}</span>
+        <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-4">
+          {actions}
+          <span className="hidden text-[13px] text-slate-500 sm:inline">{userName}</span>
+          <Form method="post" action="/logout">
+            <button type="submit" className="text-[13px] font-medium text-slate-500 hover:text-slate-900">
+              Sign out
+            </button>
+          </Form>
+        </div>
+      </div>
+      {nav ? <div className="-mt-px border-t border-slate-100 px-4 sm:px-6">{nav}</div> : null}
+    </header>
+  );
+}
+
+/** DESIGN.md: every detail view has a breadcrumb back to its table. One line of
+ *  small slate links, the last item being the current page. */
+export function Breadcrumbs({ items }: { items: { to?: string; label: string }[] }) {
+  return (
+    <nav aria-label="Breadcrumb" className="mb-3">
+      <ol className="flex flex-wrap items-center gap-x-1.5 text-[13px] text-slate-500">
+        {items.map((item, index) => (
+          <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-x-1.5">
+            {index > 0 ? (
+              <span className="text-slate-300" aria-hidden="true">
+                /
+              </span>
+            ) : null}
+            {item.to ? (
+              <Link to={item.to} className="hover:text-slate-900">
+                {item.label}
+              </Link>
+            ) : (
+              <span aria-current="page" className="truncate text-slate-900">
+                {item.label}
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+/** Chrome for the public pages: CFP, the submission form, the public agenda, the
+ *  event page, and the API docs. Never used inside a widget, which must stay free of
+ *  product chrome. `role` comes from the signed cookie, so the right-hand link is a
+ *  way back into the app rather than a second sign-in. */
+export function PublicHeader({
+  eventName,
+  eventSlug,
+  role,
+  width = "max-w-[720px]",
+}: {
+  eventName?: string | null;
+  eventSlug?: string | null;
+  role?: string | null;
+  width?: string;
+}) {
+  return (
+    <header className="border-b border-slate-200 bg-white">
+      <div className={`mx-auto flex h-14 w-full ${width} items-center gap-2 px-4 sm:px-6`}>
+        <Link to="/" className="inline-flex h-11 shrink-0 items-center gap-2">
+          <LogoMark size={20} />
+          <span className="text-sm font-semibold tracking-tight text-slate-900">OpenSession</span>
+        </Link>
+        {eventName ? (
+          <>
+            <span className="shrink-0 text-slate-300" aria-hidden="true">
+              /
+            </span>
+            {eventSlug ? (
+              <Link to={`/e/${eventSlug}`} className="inline-flex h-11 min-w-0 items-center text-sm text-slate-500 hover:text-slate-900">
+                <span className="truncate">{eventName}</span>
+              </Link>
+            ) : (
+              <span className="truncate text-sm text-slate-500">{eventName}</span>
+            )}
+          </>
+        ) : null}
+        <div className="ml-auto shrink-0">
+          <Link
+            to={role ? landingFor(role) : "/login"}
+            className="inline-flex h-11 items-center text-sm font-medium text-slate-500 hover:text-slate-900"
+          >
+            {role ? homeLabelFor(role) : "Sign in"}
+          </Link>
         </div>
       </div>
     </header>

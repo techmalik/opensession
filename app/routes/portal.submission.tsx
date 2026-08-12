@@ -10,7 +10,7 @@ import { requireUser } from "../lib/session.server";
 import { formOpenState, getFields, speakerStatus, withColumnFallbacks, type FieldDef } from "../lib/cfp.server";
 import { formatDate, formatDateTime } from "../lib/format";
 import { contacts, events, fileUploads, formats, forms, levels, sessionParticipants, sessions, statuses, tracks } from "../../database/schema";
-import { AppBar, Card, StatusBadge } from "../components/ui";
+import { AppBar, Breadcrumbs, Card, StatusBadge } from "../components/ui";
 import { ROLE_LABEL } from "../lib/labels";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -148,13 +148,7 @@ export default function PortalSubmission({ loaderData }: Route.ComponentProps) {
       <AppBar title="OpenSession" userName={user.name} homeTo="/portal" />
 
       <main className="mx-auto w-full max-w-[960px] px-6 py-8">
-        <div className="mb-2 text-[13px]">
-          <Link to="/portal" className="text-slate-500 hover:text-slate-900">
-            Your submissions
-          </Link>
-          <span className="mx-1 text-slate-400">/</span>
-          <span className="text-slate-900">{session.friendlyId}</span>
-        </div>
+        <Breadcrumbs items={[{ to: "/portal", label: "Your submissions" }, { label: session.friendlyId }]} />
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

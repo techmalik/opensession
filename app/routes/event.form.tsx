@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form, Link } from "react-router";
+import { Form } from "react-router";
 import { and, asc, eq } from "drizzle-orm";
 import type { Route } from "./+types/event.form";
 import { getDb, appBaseUrl } from "../lib/db.server";
@@ -9,6 +9,7 @@ import { fromDateInputValue, toDateInputValue } from "../lib/format";
 import { events, formFields, forms } from "../../database/schema";
 import {
   Badge,
+  Breadcrumbs,
   Card,
   ErrorSummary,
   Field,
@@ -413,13 +414,7 @@ export default function FormEditor({ loaderData, actionData, params }: Route.Com
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`/admin/${params.eventId}/forms`} className="text-slate-500 hover:text-slate-900">
-          Forms
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">{form.name}</span>
-      </div>
+      <Breadcrumbs items={[{ to: `/admin/${params.eventId}/forms`, label: "Forms" }, { label: form.name }]} />
 
       <PageHeader
         title={form.name}

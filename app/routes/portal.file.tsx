@@ -1,7 +1,7 @@
 // One file request from the speaker's side: what was asked for, every version they
 // sent, the review outcome, and the comment thread they share with the organizers.
 
-import { Form, Link } from "react-router";
+import { Form } from "react-router";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Route } from "./+types/portal.file";
 import { getDb } from "../lib/db.server";
@@ -17,6 +17,7 @@ import { fileComments, fileUploads, users } from "../../database/schema";
 import {
   AppBar,
   ApprovalBadge,
+  Breadcrumbs,
   Card,
   ErrorNotice,
   Field,
@@ -141,14 +142,8 @@ export default function PortalFileRequest({ loaderData, actionData }: Route.Comp
     <div className="min-h-screen bg-slate-50">
       <AppBar title="OpenSession" userName={user.name} homeTo="/portal" />
 
-      <main className="mx-auto w-full max-w-[720px] px-6 py-8">
-        <div className="mb-2 text-[13px]">
-          <Link to="/portal/files" className="text-slate-500 hover:text-slate-900">
-            My files
-          </Link>
-          <span className="mx-1 text-slate-400">/</span>
-          <span className="text-slate-900">{fileRequest.title}</span>
-        </div>
+      <main className="mx-auto w-full max-w-[960px] px-6 py-8">
+        <Breadcrumbs items={[{ to: "/portal/files", label: "My files" }, { label: fileRequest.title }]} />
 
         <h1 className="text-xl font-semibold tracking-tight text-slate-900">{fileRequest.title}</h1>
         <p className="mt-1 text-sm text-slate-500">

@@ -10,7 +10,7 @@ import { requireOrganizer } from "../lib/session.server";
 import { applyImport, previewImport } from "../lib/speakers.server";
 import { parseCsv } from "../lib/format";
 import { events } from "../../database/schema";
-import { Card, ErrorNotice, Field, PageHeader, buttonPrimary, buttonSecondary } from "../components/ui";
+import { Breadcrumbs, Card, ErrorNotice, Field, PageHeader, buttonPrimary, buttonSecondary } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Import speakers" }];
@@ -79,13 +79,7 @@ export default function ImportSpeakers({ loaderData, actionData, params }: Route
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`${base}/speakers`} className="text-slate-500 hover:text-slate-900">
-          Speakers
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">Import CSV</span>
-      </div>
+      <Breadcrumbs items={[{ to: `${base}/speakers`, label: "Speakers" }, { label: "Import CSV" }]} />
 
       <PageHeader
         title="Import speakers"

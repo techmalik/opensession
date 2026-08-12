@@ -24,6 +24,7 @@ import { CRM_STAGES } from "../lib/crm-view";
 import { formatDateTime } from "../lib/format";
 import { contacts, crmProspects, fileUploads } from "../../database/schema";
 import {
+  Breadcrumbs,
   Card,
   ErrorNotice,
   Field,
@@ -162,13 +163,7 @@ export default function CrmContact({ loaderData, actionData }: Route.ComponentPr
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to="/crm/contacts" className="text-slate-500 hover:text-slate-900">
-          Directory
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">{contact.name}</span>
-      </div>
+      <Breadcrumbs items={[{ to: "/crm/contacts", label: "Directory" }, { label: contact.name }]} />
 
       <PageHeader
         title={contact.name}

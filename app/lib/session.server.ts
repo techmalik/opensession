@@ -63,3 +63,11 @@ export async function requireRole(request: Request, roles: Role[]): Promise<Curr
 export function requireOrganizer(request: Request): Promise<CurrentUser> {
   return requireRole(request, ["admin", "organizer"]);
 }
+
+/** The role from the signed cookie, with no database round trip. Public pages use
+ *  this to decide between a "Sign in" link and a link back into the app; they must
+ *  not pay for a user lookup on a page most visitors read logged out. */
+export async function getSessionRole(request: Request): Promise<Role | null> {
+  const session = await readSession(request, sessionSecret());
+  return session?.role ?? null;
+}

@@ -11,7 +11,7 @@ import { requireOrganizer } from "../lib/session.server";
 import { formatScore } from "../lib/format";
 import { loadPlanResults } from "../lib/plan-results.server";
 import { evalPlans, events } from "../../database/schema";
-import { Card, EmptyState, PageHeader, StatusBadge, buttonSecondary } from "../components/ui";
+import { Breadcrumbs, Card, EmptyState, PageHeader, StatusBadge, buttonSecondary } from "../components/ui";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: loaderData?.plan ? `Results | ${loaderData.plan.name}` : "Results" }];
@@ -51,17 +51,11 @@ export default function PlanResults({ loaderData, params }: Route.ComponentProps
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`/admin/${params.eventId}/evaluations`} className="text-slate-500 hover:text-slate-900">
-          Evaluations
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <Link to={`/admin/${params.eventId}/evaluations/${plan.id}`} className="text-slate-500 hover:text-slate-900">
-          {plan.name}
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">Results</span>
-      </div>
+      <Breadcrumbs items={[
+          { to: `/admin/${params.eventId}/evaluations`, label: "Evaluations" },
+          { to: `/admin/${params.eventId}/evaluations/${plan.id}`, label: plan.name },
+          { label: "Results" },
+        ]} />
 
       <PageHeader
         title="Results"

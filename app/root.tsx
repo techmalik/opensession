@@ -1,10 +1,21 @@
-import { Form, isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration, Link } from "react-router";
+import {
+  Form,
+  isRouteErrorResponse,
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  Link,
+  useRouteLoaderData,
+} from "react-router";
 
 import type { Route } from "./+types/root";
 // Self-hosted per DESIGN.md: no third-party font request on first paint.
 import "@fontsource-variable/inter";
 import "./app.css";
 import { RouteProgress } from "./components/ui";
+import { homeLabelFor, landingFor } from "./lib/roles";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,12 +38,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 /** Reads the signed cookie only, no database round trip: all this needs is the flag
- *  the demo buttons set. */
+ *  the demo buttons set and the role. */
 export async function loader({ request }: Route.LoaderArgs) {
   const { readSession } = await import("./lib/auth");
   const { sessionSecret } = await import("./lib/db.server");
   const session = await readSession(request, sessionSecret());
-  return { demo: session?.demo === true };
+  // The role travels with every page so an error boundary, which has no loader data
+  // of its own, can still offer a way back into the signed-in app.
+  return { demo: session?.demo === true, role: session?.role ?? null };
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
@@ -57,6 +70,9 @@ export default function App({ loaderData }: Route.ComponentProps) {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  // Undefined when the root loader itself is what failed, which is why every use of
+  // it below is optional.
+  const rootData = useRouteLoaderData<typeof loader>("root");
   let title = "Something went wrong";
   let details = "An unexpected error occurred. Try again.";
   let stack: string | undefined;
@@ -81,12 +97,22 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     <main className="mx-auto w-full max-w-[720px] px-6 py-16">
       <h1 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
       <p className="mt-1 text-sm text-slate-500">{details}</p>
-      <Link
-        to="/"
-        className="mt-4 inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50"
-      >
-        Go to the start
-      </Link>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Link
+          to="/"
+          className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50"
+        >
+          Go to the start
+        </Link>
+        {rootData?.role ? (
+          <Link
+            to={landingFor(rootData.role)}
+            className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-50"
+          >
+            {homeLabelFor(rootData.role)}
+          </Link>
+        ) : null}
+      </div>
       {stack ? (
         <pre className="mt-6 w-full overflow-x-auto rounded-md bg-slate-50 p-4 text-xs text-slate-500">
           <code>{stack}</code>

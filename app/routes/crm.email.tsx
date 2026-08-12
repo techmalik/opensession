@@ -7,7 +7,7 @@ import type { Route } from "./+types/crm.email";
 import { requireOrganizer } from "../lib/session.server";
 import { contactsByIds } from "../lib/crm.server";
 import { listEventsForPicker } from "../lib/crm.server";
-import { Card, ErrorNotice, Field, Notice, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass, textareaClass } from "../components/ui";
+import { Breadcrumbs, Card, ErrorNotice, Field, Notice, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass, textareaClass } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Email contacts" }];
@@ -100,13 +100,7 @@ export default function CrmEmail({ loaderData, actionData }: Route.ComponentProp
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`/crm/contacts?${searchParams.toString()}`} className="text-slate-500 hover:text-slate-900">
-          Directory
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">Email</span>
-      </div>
+      <Breadcrumbs items={[{ to: `/crm/contacts?${searchParams.toString()}`, label: "Directory" }, { label: "Email" }]} />
 
       <PageHeader
         title="Email contacts"

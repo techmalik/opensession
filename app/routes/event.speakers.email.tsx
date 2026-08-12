@@ -12,6 +12,7 @@ import { renderTemplate, MERGE_TAG_HELP } from "../lib/email";
 import { querySpeakers } from "../lib/speakers.server";
 import { events } from "../../database/schema";
 import {
+  Breadcrumbs,
   Card,
   ErrorNotice,
   Field,
@@ -167,13 +168,7 @@ export default function EmailSpeakers({ loaderData, actionData, params }: Route.
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`${base}/speakers`} className="text-slate-500 hover:text-slate-900">
-          Speakers
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">Email speakers</span>
-      </div>
+      <Breadcrumbs items={[{ to: `${base}/speakers`, label: "Speakers" }, { label: "Email speakers" }]} />
 
       <PageHeader
         title="Email speakers"
@@ -183,7 +178,7 @@ export default function EmailSpeakers({ loaderData, actionData, params }: Route.
       {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
       {recipients.length === 0 ? <Notice>No speakers match the current selection. Go back and widen the filter.</Notice> : null}
 
-      <div className="grid max-w-[1000px] gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
           <Card className="p-4">
             <Form method="get" className="flex flex-wrap items-end gap-2">

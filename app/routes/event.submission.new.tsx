@@ -9,7 +9,7 @@ import { requireOrganizer } from "../lib/session.server";
 import { nextFriendlyId } from "../lib/cfp.server";
 import { findOrCreateContact } from "../lib/users.server";
 import { eventContacts, events, formats, forms, levels, sessionParticipants, sessions, statuses, tracks } from "../../database/schema";
-import { Card, ErrorSummary, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass, textareaClass } from "../components/ui";
+import { Breadcrumbs, Card, ErrorSummary, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass, textareaClass } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Add submission" }];
@@ -129,13 +129,7 @@ export default function NewSubmission({ loaderData, actionData, params }: Route.
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`/admin/${params.eventId}/submissions`} className="text-slate-500 hover:text-slate-900">
-          Submissions
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">Add submission</span>
-      </div>
+      <Breadcrumbs items={[{ to: `/admin/${params.eventId}/submissions`, label: "Submissions" }, { label: "Add submission" }]} />
 
       <PageHeader title="Add submission" description="Enter a proposal on a speaker's behalf. It joins the pipeline like any other." />
 

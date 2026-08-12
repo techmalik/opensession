@@ -9,6 +9,11 @@ export function landingFor(role: string): string {
   return "/portal";
 }
 
+/** The event seed.sql ships. The seeded demo accounts keep access to it after an
+ *  event became something only its creator can open, because it is nobody's event in
+ *  particular and the landing page signs strangers straight into it. */
+export const DEMO_EVENT_SLUG = "meridian-dev-summit-2027";
+
 /** The three accounts the landing page can sign into without a password. This list
  *  is the whole security boundary for that feature: the demo route will not sign in
  *  as anyone whose email is not one of these, whatever it is sent. */
@@ -46,3 +51,21 @@ export const DEMO_CREDENTIALS: { role: string; email: string; password: string }
   { role: "Speaker", email: "speaker@demo.meridian.dev", password: "MeridianDemo-spk-27" },
   { role: "Admin", email: "admin@demo.meridian.dev", password: "MeridianDemo-adm-27" },
 ];
+
+/** What to call the role's home in navigation. Pairs with landingFor: one decides
+ *  where the link goes, the other what it is called. */
+export function homeLabelFor(role: string): string {
+  if (role === "admin" || role === "organizer") return "Organizer";
+  if (role === "evaluator") return "Review";
+  return "Speaker portal";
+}
+
+/** True for the seeded demo logins, one-click or typed. Used only to keep them on the
+ *  demo event: it grants nothing anywhere else. */
+export function isDemoAccountEmail(email: string): boolean {
+  const normalized = email.trim().toLowerCase();
+  return (
+    DEMO_ACCOUNTS.some((account) => account.email === normalized) ||
+    DEMO_CREDENTIALS.some((account) => account.email === normalized)
+  );
+}

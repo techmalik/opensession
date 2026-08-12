@@ -9,8 +9,10 @@
 
 import { data } from "react-router";
 import type { Route } from "./+types/agenda.public";
+import { getSessionRole } from "../lib/session.server";
 import { groupByDay, loadPublicData, publicCacheHeaders } from "../lib/public.server";
 import { EmbedShell, EmptyPublic, SessionTags } from "../components/embed";
+import { PublicHeader } from "../components/ui";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData?.event) return [{ title: "Agenda" }];
@@ -26,52 +28,58 @@ export function headers({ loaderHeaders }: Route.HeadersArgs) {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const url = new URL(request.url);
+  const role = await getSessionRole(request);
   const all = await loadPublicData(String(params.eventSlug));
+  // A signed-in reader gets a header nobody else should be served out of a cache.
   return data(
     {
       event: all.event,
       days: groupByDay(all.sessions, all.days),
+      role,
     },
-    { headers: publicCacheHeaders(url) }
+    { headers: role ? { "Cache-Control": "private, no-store" } : publicCacheHeaders(url) }
   );
 }
 
 export default function PublicAgenda({ loaderData }: Route.ComponentProps) {
-  const { event, days } = loaderData;
+  const { event, days, role } = loaderData;
 
   return (
-    <EmbedShell event={event} current="agenda" heading="Agenda">
-      {days.length === 0 ? (
-        <EmptyPublic message="No sessions are scheduled yet. The programme goes live here once it is set." />
-      ) : (
-        days.map((group) => (
-          <section key={group.value} className="mt-8">
-            <h3 className="text-base font-semibold text-slate-900">{group.label}</h3>
-            <ul className="mt-3 divide-y divide-slate-200 border-y border-slate-200">
-              {group.sessions.map((session) => (
-                <li key={session.id} className="py-4">
-                  <a
-                    href={`/embed/v1/${event.slug}/sessions?session=${session.id}`}
-                    className="text-base font-medium text-slate-900 hover:text-accent"
-                  >
-                    {session.title}
-                  </a>
-                  <p className="mt-1 text-base text-slate-500">
-                    {session.startLabel} to {session.endLabel}
-                    {session.roomName ? `, ${session.roomName}` : ""}
-                  </p>
-                  {session.speakers.length > 0 ? (
+    <>
+      <PublicHeader eventName={event.name} eventSlug={event.slug} role={role} />
+      <EmbedShell event={event} current="agenda" heading="Agenda">
+        {days.length === 0 ? (
+          <EmptyPublic message="No sessions are scheduled yet. The programme goes live here once it is set." />
+        ) : (
+          days.map((group) => (
+            <section key={group.value} className="mt-8">
+              <h3 className="text-base font-semibold text-slate-900">{group.label}</h3>
+              <ul className="mt-3 divide-y divide-slate-200 border-y border-slate-200">
+                {group.sessions.map((session) => (
+                  <li key={session.id} className="py-4">
+                    <a
+                      href={`/embed/v1/${event.slug}/sessions?session=${session.id}`}
+                      className="text-base font-medium text-slate-900 hover:text-accent"
+                    >
+                      {session.title}
+                    </a>
                     <p className="mt-1 text-base text-slate-500">
-                      {session.speakers.map((speaker) => speaker.name).join(", ")}
+                      {session.startLabel} to {session.endLabel}
+                      {session.roomName ? `, ${session.roomName}` : ""}
                     </p>
-                  ) : null}
-                  <SessionTags session={session} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
-      )}
-    </EmbedShell>
+                    {session.speakers.length > 0 ? (
+                      <p className="mt-1 text-base text-slate-500">
+                        {session.speakers.map((speaker) => speaker.name).join(", ")}
+                      </p>
+                    ) : null}
+                    <SessionTags session={session} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        )}
+      </EmbedShell>
+    </>
   );
 }

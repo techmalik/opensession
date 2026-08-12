@@ -116,7 +116,7 @@ export default function PortalProfile({ loaderData, actionData }: Route.Componen
     <div className="min-h-screen bg-slate-50">
       <AppBar title="OpenSession" userName={user.name} homeTo="/portal" />
 
-      <main className="mx-auto w-full max-w-[720px] px-6 py-8">
+      <main className="mx-auto w-full max-w-[960px] px-6 py-8">
         <h1 className="text-xl font-semibold tracking-tight text-slate-900">My profile</h1>
         <p className="mt-1 text-sm text-slate-500">This is what organizers and the public speakers page show.</p>
 

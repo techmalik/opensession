@@ -32,6 +32,7 @@ import {
 } from "../../database/schema";
 import {
   ApprovalBadge,
+  Breadcrumbs,
   Card,
   Field,
   PageHeader,
@@ -430,13 +431,7 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`/admin/${params.eventId}/submissions`} className="text-slate-500 hover:text-slate-900">
-          Submissions
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">{session.friendlyId}</span>
-      </div>
+      <Breadcrumbs items={[{ to: `/admin/${params.eventId}/submissions`, label: "Submissions" }, { label: session.friendlyId }]} />
 
       <PageHeader
         title={session.title}

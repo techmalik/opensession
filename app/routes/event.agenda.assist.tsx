@@ -10,7 +10,7 @@ import { offsetForTimeValue, slotLabel } from "../lib/agenda-grid";
 import { proposeSchedule } from "../lib/ai.server";
 import { ASSIST_SOURCE_LABEL } from "../lib/labels";
 import { formatDayLabel } from "../lib/format";
-import { Card, EmptyState, ErrorNotice, Notice, PageHeader, buttonPrimary, buttonSecondary } from "../components/ui";
+import { Breadcrumbs, Card, EmptyState, ErrorNotice, Notice, PageHeader, buttonPrimary, buttonSecondary } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "AI agenda assist" }];
@@ -114,13 +114,7 @@ export default function AgendaAssist({ loaderData, actionData, params }: Route.C
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`${base}/agenda`} className="text-slate-500 hover:text-slate-900">
-          Agenda
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">AI assist</span>
-      </div>
+      <Breadcrumbs items={[{ to: `${base}/agenda`, label: "Agenda" }, { label: "AI assist" }]} />
 
       <PageHeader
         title="AI agenda assist"

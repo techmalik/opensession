@@ -7,7 +7,7 @@ import { requireOrganizer } from "../lib/session.server";
 import { addProspectNote, moveProspect, prospectDetail } from "../lib/crm.server";
 import { CRM_STAGES, isCrmStage, STAGE_LABEL } from "../lib/crm-view";
 import { formatDateTime } from "../lib/format";
-import { Card, ErrorNotice, Notice, PageHeader, buttonPrimary, buttonSecondary, selectClass, textareaClass } from "../components/ui";
+import { Breadcrumbs, Card, ErrorNotice, Notice, PageHeader, buttonPrimary, buttonSecondary, selectClass, textareaClass } from "../components/ui";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: loaderData?.card ? `${loaderData.card.name} | Pipeline` : "Prospect" }];
@@ -49,13 +49,7 @@ export default function CrmProspect({ loaderData, actionData }: Route.ComponentP
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to="/crm/pipeline" className="text-slate-500 hover:text-slate-900">
-          Pipeline
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">{card.name}</span>
-      </div>
+      <Breadcrumbs items={[{ to: "/crm/pipeline", label: "Pipeline" }, { label: card.name }]} />
 
       <PageHeader
         title={card.name}

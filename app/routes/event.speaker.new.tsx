@@ -7,7 +7,7 @@ import type { Route } from "./+types/event.speaker.new";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { contacts, eventContacts, events } from "../../database/schema";
-import { Card, ErrorNotice, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass, textareaClass } from "../components/ui";
+import { Breadcrumbs, Card, ErrorNotice, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass, textareaClass } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Add speaker" }];
@@ -85,13 +85,7 @@ export default function NewSpeaker({ loaderData, actionData, params }: Route.Com
 
   return (
     <>
-      <div className="mb-2 text-[13px]">
-        <Link to={`${base}/speakers`} className="text-slate-500 hover:text-slate-900">
-          Speakers
-        </Link>
-        <span className="mx-1 text-slate-400">/</span>
-        <span className="text-slate-900">Add speaker</span>
-      </div>
+      <Breadcrumbs items={[{ to: `${base}/speakers`, label: "Speakers" }, { label: "Add speaker" }]} />
 
       <PageHeader title="Add speaker" description={`Add someone to the ${event.name} roster.`} />
 
