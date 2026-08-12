@@ -15,6 +15,17 @@ import { forms } from "../../database/schema";
 // into a live, populated demo. A specific event's own page lives at /e/:eventSlug.
 
 const GITHUB_URL = "https://github.com/techmalik/opensession";
+
+// Two button sizes on this page and no others: 36px in the header, 44px in the
+// sections. Every call to action below is one of these four constants.
+const ctaSmall =
+  "inline-flex h-9 items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover";
+const ctaLarge =
+  "inline-flex h-11 items-center justify-center rounded-md bg-accent px-5 text-base font-medium text-white transition-colors hover:bg-accent-hover";
+const ctaLargeSecondary =
+  "inline-flex h-11 items-center justify-center rounded-md border border-slate-200 bg-white px-5 text-base font-medium text-slate-900 transition-colors hover:bg-slate-50";
+const ctaLargeInverse =
+  "inline-flex h-11 items-center justify-center gap-2 rounded-md bg-white px-5 text-base font-medium text-slate-900 transition-colors hover:bg-slate-100";
 const CANONICAL_URL = "https://opensession.opensession.workers.dev/";
 
 export function meta(): Route.MetaDescriptors {
@@ -106,8 +117,8 @@ function SiteHeader({ user }: { user: { role: string } | null }) {
 
   return (
     <header
-      className={`sticky top-0 z-40 bg-white transition-shadow duration-200 ${
-        scrolled ? "border-b border-slate-200 shadow-sm" : "border-b border-transparent"
+      className={`sticky top-0 z-40 bg-white transition-colors duration-200 ${
+        scrolled ? "border-b border-slate-200" : "border-b border-transparent"
       }`}
     >
       <div className="mx-auto flex h-16 w-full max-w-[1100px] items-center justify-between px-4 sm:px-6">
@@ -142,7 +153,7 @@ function SiteHeader({ user }: { user: { role: string } | null }) {
               Sign in
             </Link>
           )}
-          <a href="#demo" className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-white hover:bg-accent-hover">
+          <a href="#demo" className={ctaSmall}>
             Try the demo
           </a>
         </div>
@@ -207,39 +218,34 @@ function MenuGlyph() {
 function Hero({ user, event }: { user: { role: string } | null; event: { slug: string } | undefined }) {
   return (
     <section className="border-b border-slate-200 bg-slate-50">
-      <div className="mx-auto grid w-full max-w-[1100px] gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-center md:py-24 [&>*]:min-w-0">
+      <div className="mx-auto grid w-full max-w-[1100px] gap-8 px-4 py-16 sm:px-6 md:grid-cols-[1fr_1.1fr] md:items-center md:gap-16 md:py-24 [&>*]:min-w-0">
         <div>
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-slate-900 md:text-[36px]">
+          <h1 className="text-balance text-[36px] font-semibold leading-[1.06] tracking-[-0.02em] text-slate-900 sm:text-[44px] lg:text-[52px]">
             Speaker and content management, open source.
           </h1>
-          <p className="mt-4 text-base leading-relaxed text-slate-500">
+          <p className="mt-6 text-base leading-relaxed text-slate-500">
             Run the whole pipeline from call for papers to published agenda: submissions, blind review,
             scheduling, speaker portal, and embeds, on infrastructure you own. Built as an open-source
             alternative to tools like Sessionboard.
           </p>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <a href="#demo" className="inline-flex h-11 items-center rounded-md bg-accent px-5 text-base font-medium text-white hover:bg-accent-hover">
+          <div className="mt-8 flex flex-wrap gap-4">
+            <a href="#demo" className={ctaLarge}>
               Try the live demo
             </a>
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-11 items-center rounded-md border border-slate-200 bg-white px-5 text-base font-medium text-slate-900 hover:bg-slate-50"
-            >
+            <a href={GITHUB_URL} target="_blank" rel="noreferrer" className={ctaLargeSecondary}>
               View on GitHub
             </a>
           </div>
 
-          <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-slate-500">
+          <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-slate-500">
             <li>MIT licensed</li>
             <li>Self-hostable on Cloudflare</li>
             <li>No per-event pricing</li>
           </ul>
 
           {user ? null : (
-            <p className="mt-6 text-[13px] text-slate-500">
+            <p className="mt-8 text-[13px] text-slate-500">
               Have an account?{" "}
               <Link to="/login" className="font-medium text-accent hover:underline">
                 Sign in
@@ -263,6 +269,9 @@ function SubmissionsMockup({ event }: { event: { slug: string } | undefined }) {
     { title: "Scheduling without double-booking", speaker: "Marcus Okafor", track: "Engineering", status: "Pending" },
     { title: "What conference organizers actually need", speaker: "Sam Whitfield", track: "Product", status: "Pending" },
   ];
+  // Same 13px body, 40px rows, and dot badge as the real submissions table in
+  // app/routes/event.submissions.tsx. If that table changes, this changes with it:
+  // a mockup that is denser or looser than the product is a lie about the product.
   const statusColor: Record<string, string> = {
     Accepted: "bg-accent",
     "Accept Queue": "bg-sky-600",
@@ -271,17 +280,17 @@ function SubmissionsMockup({ event }: { event: { slug: string } | undefined }) {
 
   const ref = useReveal<HTMLDivElement>();
   return (
-    <div ref={ref} className="reveal overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div ref={ref} className="reveal overflow-hidden rounded-lg border border-slate-200 bg-white">
       <div className="flex items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-3 py-2">
-        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-        <span className="ml-2 text-[12px] text-slate-400">
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+        <span className="ml-2 truncate text-[12px] text-slate-400">
           opensession.workers.dev/admin/{event?.slug ?? "your-event"}/submissions
         </span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[420px] text-[13px]">
+        <table className="w-full min-w-[380px] text-[13px]">
           <thead>
             <tr className="border-b border-slate-200 text-left text-slate-500">
               <th scope="col" className="px-3 py-2 font-medium">Title</th>
@@ -293,12 +302,12 @@ function SubmissionsMockup({ event }: { event: { slug: string } | undefined }) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.title} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                <td className="max-w-[180px] truncate px-3 py-2.5 font-medium text-slate-900">{row.title}</td>
-                <td className="px-3 py-2.5 text-slate-500">{row.speaker}</td>
-                <td className="px-3 py-2.5 text-slate-500">{row.track}</td>
-                <td className="px-3 py-2.5">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className={`h-1.5 w-1.5 rounded-full ${statusColor[row.status]}`} />
+                <td className="h-10 max-w-[160px] truncate px-3 font-medium text-slate-900">{row.title}</td>
+                <td className="whitespace-nowrap px-3 text-slate-900">{row.speaker}</td>
+                <td className="whitespace-nowrap px-3 text-slate-500">{row.track}</td>
+                <td className="whitespace-nowrap px-3">
+                  <span className="inline-flex items-center gap-1.5 text-slate-900">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${statusColor[row.status]}`} aria-hidden="true" />
                     {row.status}
                   </span>
                 </td>
@@ -327,13 +336,13 @@ function Pipeline() {
   return (
     <Section id="pipeline">
       <SectionHeading>One pipeline, start to finish.</SectionHeading>
-      <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-5 [&>*]:min-w-0">
+      {/* A strict five column grid with one hairline rule per column: the steps read
+          as one row of the same measure, not five loose cards. */}
+      <ol className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-5 [&>*]:min-w-0">
         {pipelineSteps.map((step, i) => (
-          <RevealLi key={step.name}>
+          <RevealLi key={step.name} className="border-t border-slate-200 pt-4">
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[12px] font-medium text-white">
-                {i + 1}
-              </span>
+              <span className="text-[12px] font-medium tabular-nums text-slate-400">{String(i + 1).padStart(2, "0")}</span>
               <h3 className="text-sm font-semibold text-slate-900">{step.name}</h3>
             </div>
             <p className="mt-2 text-[13px] leading-relaxed text-slate-500">{step.detail}</p>
@@ -403,13 +412,13 @@ function FeatureGrid() {
   return (
     <Section id="features" tone="slate">
       <SectionHeading>Six areas, one system.</SectionHeading>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
         {features.map((feature) => (
-          <RevealDiv key={feature.name} className="rounded-lg border border-slate-200 bg-white p-5">
+          <RevealDiv key={feature.name} className="h-full rounded-lg border border-slate-200 bg-white p-6">
             <div className="text-slate-900">{feature.glyph}</div>
-            <h3 className="mt-3 text-sm font-semibold text-slate-900">{feature.name}</h3>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">{feature.sentences[0]}</p>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">{feature.sentences[1]}</p>
+            <h3 className="mt-4 text-sm font-semibold text-slate-900">{feature.name}</h3>
+            <p className="mt-2 text-[13px] leading-relaxed text-slate-500">{feature.sentences[0]}</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-slate-500">{feature.sentences[1]}</p>
           </RevealDiv>
         ))}
       </div>
@@ -487,11 +496,11 @@ function LiveEmbed({ event }: { event: { slug: string; name: string } | undefine
       </p>
 
       {event ? (
-        <div ref={ref} className="reveal mt-6 overflow-hidden rounded-lg border border-slate-200 shadow-sm">
+        <div ref={ref} className="reveal mt-8 overflow-hidden rounded-lg border border-slate-200">
           <div className="flex items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-3 py-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-            <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-            <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
             <span className="ml-2 truncate text-[12px] text-slate-400">
               opensession.workers.dev/embed/v1/{event.slug}/agenda
             </span>
@@ -504,7 +513,7 @@ function LiveEmbed({ event }: { event: { slug: string; name: string } | undefine
           />
         </div>
       ) : (
-        <p className="mt-6 text-[13px] text-slate-500">No featured event is set yet.</p>
+        <p className="mt-8 text-[13px] text-slate-500">No featured event is set yet.</p>
       )}
     </Section>
   );
@@ -518,7 +527,7 @@ function OpenSource() {
   const ref = useReveal<HTMLDivElement>();
   return (
     <section id="open-source" className="border-y border-slate-800 bg-slate-900">
-      <div ref={ref} className="reveal mx-auto grid w-full max-w-[1100px] gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-center [&>*]:min-w-0">
+      <div ref={ref} className="reveal mx-auto grid w-full max-w-[1100px] gap-8 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-center md:gap-16 md:py-24 [&>*]:min-w-0">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white">Own your speaker data.</h2>
           <ul className="mt-4 space-y-2 text-[14px] text-slate-300">
@@ -530,7 +539,7 @@ function OpenSource() {
             href={GITHUB_URL}
             target="_blank"
             rel="noreferrer"
-            className="mt-6 inline-flex h-11 items-center gap-2 rounded-md bg-white px-5 text-base font-medium text-slate-900 hover:bg-slate-100"
+            className={`mt-8 ${ctaLargeInverse}`}
           >
             <GithubIcon /> View on GitHub
           </a>
@@ -578,7 +587,7 @@ function DemoSection({
           <p className="mt-2 max-w-[640px] text-[13px] text-slate-500">
             Sign in to the populated demo event as any role. No password needed.
           </p>
-          <ul className="mt-5 grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
+          <ul className="mt-6 grid gap-4 sm:grid-cols-3 [&>*]:min-w-0">
             {demoAccounts.map((account) => (
               <RevealLi key={account.key}>
                 <Form method="post" action={`/demo/${account.key}`}>
@@ -640,7 +649,7 @@ function DemoSection({
 function SiteFooter({ event }: { event: { slug: string } | undefined }) {
   return (
     <footer className="border-t border-slate-200 bg-slate-50">
-      <div className="mx-auto grid w-full max-w-[1100px] gap-8 px-4 py-12 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
+      <div className="mx-auto grid w-full max-w-[1100px] gap-8 px-4 py-16 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
         <div>
           <LogoMark />
           <p className="mt-3 max-w-[220px] text-[13px] leading-relaxed text-slate-500">
@@ -681,7 +690,7 @@ function SiteFooter({ event }: { event: { slug: string } | undefined }) {
 function FooterColumn({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div>
-      <h3 className="text-[13px] font-semibold text-slate-900">{title}</h3>
+      <h3 className="text-[13px] font-semibold text-slate-500">{title}</h3>
       <nav className="mt-3 flex flex-col gap-2 text-[13px] text-slate-500 [&_a:hover]:text-slate-900">{children}</nav>
     </div>
   );
@@ -694,7 +703,7 @@ function FooterColumn({ title, children }: { title: string; children: ReactNode 
 function Section({ id, tone = "white", children }: { id: string; tone?: "white" | "slate"; children: ReactNode }) {
   return (
     <section id={id} className={`border-b border-slate-200 ${tone === "slate" ? "bg-slate-50" : "bg-white"}`}>
-      <div className="mx-auto w-full max-w-[1100px] px-4 py-16 sm:px-6">{children}</div>
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-16 sm:px-6 md:py-24">{children}</div>
     </section>
   );
 }

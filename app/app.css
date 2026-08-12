@@ -34,8 +34,12 @@ body {
 
 /* Fade-and-rise on section entry (marketing home page only). One class toggled by
    an IntersectionObserver in app/lib/reveal.ts, once per element. Reduced motion
-   disables the whole thing so the content is simply visible. */
-@media (prefers-reduced-motion: no-preference) {
+   disables the whole thing so the content is simply visible.
+
+   The scripting query matters: the hidden state is server-rendered, and only script
+   ever clears it. Without the query, a visitor whose JavaScript never runs gets a
+   homepage that is blank below the hero. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
   .reveal {
     opacity: 0;
     transform: translateY(12px);
