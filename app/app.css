@@ -31,3 +31,18 @@ body {
 :focus-visible {
   @apply outline-none ring-2 ring-accent ring-offset-1;
 }
+
+/* Fade-and-rise on section entry (marketing home page only). One class toggled by
+   an IntersectionObserver in app/lib/reveal.ts, once per element. Reduced motion
+   disables the whole thing so the content is simply visible. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 260ms ease-out, transform 260ms ease-out;
+  }
+  .reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

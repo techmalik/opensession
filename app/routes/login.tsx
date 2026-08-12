@@ -2,7 +2,7 @@ import { Form, Link, redirect, useNavigation } from "react-router";
 import { eq } from "drizzle-orm";
 import type { Route } from "./+types/login";
 import { createSessionCookie, verifyPassword } from "../lib/auth";
-import { landingFor } from "../lib/roles";
+import { landingFor, DEMO_ACCOUNTS } from "../lib/roles";
 import { getDb, sessionSecret } from "../lib/db.server";
 import { getUser } from "../lib/session.server";
 import { users } from "../../database/schema";
@@ -98,6 +98,28 @@ export default function Login({ loaderData, actionData }: Route.ComponentProps) 
           Create one
         </Link>
       </p>
+
+      <div className="mt-8 rounded-lg border border-slate-200 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">Just exploring?</h2>
+        <p className="mt-1 text-[13px] text-slate-500">
+          Sign in to the populated demo event as any role. No password needed.
+        </p>
+        <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+          {DEMO_ACCOUNTS.map((account) => (
+            <li key={account.key}>
+              <Form method="post" action={`/demo/${account.key}`}>
+                <button
+                  type="submit"
+                  className="flex h-full w-full flex-col items-start rounded-md border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-accent hover:bg-slate-50"
+                >
+                  <span className="text-sm font-medium text-slate-900">{account.label}</span>
+                  <span className="mt-0.5 text-[13px] text-slate-500">{account.blurb}</span>
+                </button>
+              </Form>
+            </li>
+          ))}
+        </ul>
+      </div>
     </main>
   );
 }

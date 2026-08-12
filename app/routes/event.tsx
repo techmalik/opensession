@@ -67,9 +67,14 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
             <details key={event.id} className="group relative">
               <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-1.5 hover:bg-slate-50">
                 <span className="truncate text-sm font-medium text-slate-900">{event.name}</span>
-                <span className="ml-2 shrink-0 text-slate-400" aria-hidden="true">
-                  v
-                </span>
+                <svg
+                  className="ml-2 h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </summary>
               <div className="absolute left-0 right-0 z-10 mt-1 rounded-md border border-slate-200 bg-white py-1 shadow-sm">
                 {allEvents.map((option) => (
