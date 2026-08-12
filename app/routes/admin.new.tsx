@@ -79,7 +79,7 @@ export default function NewEvent({ loaderData, actionData }: Route.ComponentProp
               <input id="name" name="name" type="text" defaultValue={values?.name ?? ""} className={inputClass} required autoFocus />
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 [&>*]:min-w-0">
               <Field label="Start date" name="startsAt">
                 <input id="startsAt" name="startsAt" type="date" className={inputClass} />
               </Field>

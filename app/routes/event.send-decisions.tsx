@@ -265,7 +265,7 @@ export default function SendDecisions({ loaderData, actionData, params }: Route.
           description="Recording a decision does not email anyone. This step does. Each send is logged under Communications."
         />
 
-        <div className="grid max-w-[720px] gap-4 sm:grid-cols-2">
+        <div className="grid max-w-[720px] gap-4 sm:grid-cols-2 [&>*]:min-w-0">
           <Card className="p-4">
             <h2 className="text-sm font-semibold text-slate-900">Acceptances</h2>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{acceptCount}</p>
@@ -310,7 +310,7 @@ export default function SendDecisions({ loaderData, actionData, params }: Route.
         }
       />
 
-      <div className="grid max-w-[960px] gap-4 lg:grid-cols-[1fr_340px]">
+      <div className="grid max-w-[960px] gap-4 lg:grid-cols-[1fr_340px] [&>*]:min-w-0">
         <Card className="p-4">
           <Form
             method="post"

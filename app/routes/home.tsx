@@ -207,7 +207,7 @@ function MenuGlyph() {
 function Hero({ user, event }: { user: { role: string } | null; event: { slug: string } | undefined }) {
   return (
     <section className="border-b border-slate-200 bg-slate-50">
-      <div className="mx-auto grid w-full max-w-[1100px] gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-center md:py-24">
+      <div className="mx-auto grid w-full max-w-[1100px] gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-center md:py-24 [&>*]:min-w-0">
         <div>
           <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-slate-900 md:text-[36px]">
             Speaker and content management, open source.
@@ -327,7 +327,7 @@ function Pipeline() {
   return (
     <Section id="pipeline">
       <SectionHeading>One pipeline, start to finish.</SectionHeading>
-      <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+      <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-5 [&>*]:min-w-0">
         {pipelineSteps.map((step, i) => (
           <RevealLi key={step.name}>
             <div className="flex items-center gap-2">
@@ -403,7 +403,7 @@ function FeatureGrid() {
   return (
     <Section id="features" tone="slate">
       <SectionHeading>Six areas, one system.</SectionHeading>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
         {features.map((feature) => (
           <RevealDiv key={feature.name} className="rounded-lg border border-slate-200 bg-white p-5">
             <div className="text-slate-900">{feature.glyph}</div>
@@ -518,7 +518,7 @@ function OpenSource() {
   const ref = useReveal<HTMLDivElement>();
   return (
     <section id="open-source" className="border-y border-slate-800 bg-slate-900">
-      <div ref={ref} className="reveal mx-auto grid w-full max-w-[1100px] gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-center">
+      <div ref={ref} className="reveal mx-auto grid w-full max-w-[1100px] gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-center [&>*]:min-w-0">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white">Own your speaker data.</h2>
           <ul className="mt-4 space-y-2 text-[14px] text-slate-300">
@@ -578,7 +578,7 @@ function DemoSection({
           <p className="mt-2 max-w-[640px] text-[13px] text-slate-500">
             Sign in to the populated demo event as any role. No password needed.
           </p>
-          <ul className="mt-5 grid gap-3 sm:grid-cols-3">
+          <ul className="mt-5 grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
             {demoAccounts.map((account) => (
               <RevealLi key={account.key}>
                 <Form method="post" action={`/demo/${account.key}`}>
@@ -640,7 +640,7 @@ function DemoSection({
 function SiteFooter({ event }: { event: { slug: string } | undefined }) {
   return (
     <footer className="border-t border-slate-200 bg-slate-50">
-      <div className="mx-auto grid w-full max-w-[1100px] gap-8 px-4 py-12 sm:px-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid w-full max-w-[1100px] gap-8 px-4 py-12 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
         <div>
           <LogoMark />
           <p className="mt-3 max-w-[220px] text-[13px] leading-relaxed text-slate-500">

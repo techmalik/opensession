@@ -188,7 +188,7 @@ export default function ApiDocs({ loaderData }: Route.ComponentProps) {
               <li key={index} className="border-t border-slate-200 pt-4">
                 <p className="flex flex-wrap items-baseline gap-2">
                   <span className="font-mono text-xs font-semibold text-slate-500">{endpoint.method}</span>
-                  <code className="font-mono text-[15px] text-slate-900">{endpoint.path}</code>
+                  <code className="break-all font-mono text-[15px] text-slate-900">{endpoint.path}</code>
                 </p>
                 <p className="mt-1 text-base leading-relaxed text-slate-500">{endpoint.description}</p>
                 <Block>{endpoint.example(baseUrl)}</Block>

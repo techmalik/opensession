@@ -314,7 +314,7 @@ export default function Communications({ loaderData, actionData, params }: Route
         </Notice>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
+      <div className="grid gap-4 xl:grid-cols-[1fr_380px] [&>*]:min-w-0">
         <div className="space-y-4">
           <Card>
             <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2.5">
@@ -470,31 +470,33 @@ export default function Communications({ loaderData, actionData, params }: Route
             </div>
 
             {scheduled.length > 0 ? (
-              <table className="mt-4 w-full text-[13px]">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-slate-500">
-                    <th scope="col" className="py-2 font-medium">Job</th>
-                    <th scope="col" className="py-2 font-medium">Runs</th>
-                    <th scope="col" className="py-2 font-medium">State</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scheduled.map((job) => (
-                    <tr key={job.id} className="border-b border-slate-100 last:border-0">
-                      <td className="py-1.5 text-slate-900">
-                        {job.kind}
-                        <span className="ml-2 font-mono text-xs text-slate-500">{job.payloadJson}</span>
-                      </td>
-                      <td className="py-1.5 text-slate-500">{formatDateTime(job.runAfter, event.timezone)}</td>
-                      <td className="py-1.5 text-slate-500">
-                        {job.status}
-                        {job.attempts > 0 ? `, ${job.attempts} ${job.attempts === 1 ? "attempt" : "attempts"}` : ""}
-                        {job.lastError ? <span className="block max-w-[260px] truncate">{job.lastError}</span> : null}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="mt-4 w-full text-[13px]">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-slate-500">
+                      <th scope="col" className="py-2 font-medium">Job</th>
+                      <th scope="col" className="py-2 font-medium">Runs</th>
+                      <th scope="col" className="py-2 font-medium">State</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {scheduled.map((job) => (
+                      <tr key={job.id} className="border-b border-slate-100 last:border-0">
+                        <td className="py-1.5 text-slate-900">
+                          {job.kind}
+                          <span className="ml-2 font-mono text-xs text-slate-500">{job.payloadJson}</span>
+                        </td>
+                        <td className="py-1.5 text-slate-500">{formatDateTime(job.runAfter, event.timezone)}</td>
+                        <td className="py-1.5 text-slate-500">
+                          {job.status}
+                          {job.attempts > 0 ? `, ${job.attempts} ${job.attempts === 1 ? "attempt" : "attempts"}` : ""}
+                          {job.lastError ? <span className="block max-w-[260px] truncate">{job.lastError}</span> : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : null}
           </Card>
         </div>

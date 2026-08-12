@@ -289,7 +289,7 @@ export default function SpeakerDetail({ loaderData, actionData, params }: Route.
       {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
       {actionData?.notice ? <Notice>{actionData.notice}</Notice> : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_340px] [&>*]:min-w-0">
         <div className="space-y-4">
           <Card className="p-4">
             <h2 className="text-sm font-semibold text-slate-900">Profile</h2>
@@ -317,7 +317,7 @@ export default function SpeakerDetail({ loaderData, actionData, params }: Route.
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
                 <Field label="First name" name="firstName" required>
                   <input id="firstName" name="firstName" defaultValue={speaker.firstName} className={inputClass} required />
                 </Field>
@@ -336,7 +336,7 @@ export default function SpeakerDetail({ loaderData, actionData, params }: Route.
                 <textarea id="bio" name="bio" rows={6} defaultValue={speaker.bio ?? ""} className={textareaClass} />
               </Field>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
                 <Field label="Twitter" name="twitter">
                   <input id="twitter" name="twitter" defaultValue={speaker.twitter ?? ""} className={inputClass} />
                 </Field>

@@ -64,7 +64,7 @@ export default function CrmProspect({ loaderData, actionData }: Route.ComponentP
       {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
       {actionData?.notice ? <Notice>{actionData.notice}</Notice> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
+      <div className="grid gap-4 xl:grid-cols-[1fr_340px] [&>*]:min-w-0">
         <div className="space-y-4">
           <Card className="p-4">
             <h2 className="text-sm font-semibold text-slate-900">Notes</h2>

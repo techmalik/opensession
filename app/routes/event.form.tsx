@@ -327,7 +327,7 @@ function FieldEditor({
     <Form method="post" className="space-y-4">
       {field ? <input type="hidden" name="id" value={field.id} /> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label="Label" name={`label-${field?.id ?? "new"}`} required>
           <input id={`label-${field?.id ?? "new"}`} name="label" defaultValue={field?.label ?? ""} className={inputClass} required />
         </Field>
@@ -458,7 +458,7 @@ export default function FormEditor({ loaderData, actionData, params }: Route.Com
         <Card className="p-4">
           <h2 className="text-sm font-semibold text-slate-900">Public link</h2>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <code className="rounded-md bg-slate-100 px-2 py-1.5 font-mono text-[13px] text-slate-900">{publicUrl}</code>
+            <code className="min-w-0 break-all rounded-md bg-slate-100 px-2 py-1.5 font-mono text-[13px] text-slate-900">{publicUrl}</code>
             <button
               type="button"
               className={buttonSecondary}
@@ -492,7 +492,7 @@ export default function FormEditor({ loaderData, actionData, params }: Route.Com
               <textarea id="thankYouHtml" name="thankYouHtml" rows={2} defaultValue={form.thankYouHtml ?? ""} className={textareaClass} />
             </Field>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label="Opens" name="opensAt" help="Empty means open as soon as the form is published.">
                 <input id="opensAt" name="opensAt" type="date" defaultValue={toDateInputValue(form.opensAt)} className={inputClass} />
               </Field>
@@ -501,7 +501,7 @@ export default function FormEditor({ loaderData, actionData, params }: Route.Com
               </Field>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label="Submission limit" name="submissionLimit" help="Max submissions per person. Empty means no limit.">
                 <input
                   id="submissionLimit"

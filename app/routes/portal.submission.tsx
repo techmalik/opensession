@@ -181,7 +181,7 @@ export default function PortalSubmission({ loaderData }: Route.ComponentProps) {
           </div>
         ) : null}
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_320px]">
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_320px] [&>*]:min-w-0">
           <Card className="p-4">
             <h2 className="text-sm font-semibold text-slate-900">Session details</h2>
             <dl className="mt-3 space-y-3">

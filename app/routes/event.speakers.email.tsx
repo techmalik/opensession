@@ -178,7 +178,7 @@ export default function EmailSpeakers({ loaderData, actionData, params }: Route.
       {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
       {recipients.length === 0 ? <Notice>No speakers match the current selection. Go back and widen the filter.</Notice> : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px] [&>*]:min-w-0">
         <div className="space-y-4">
           <Card className="p-4">
             <Form method="get" className="flex flex-wrap items-end gap-2">

@@ -120,7 +120,7 @@ export default function Embeds({ loaderData, actionData }: Route.ComponentProps)
         {counts.held} held from public.
       </Notice>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-4 xl:grid-cols-[1fr_360px] [&>*]:min-w-0">
         <Card className="p-4">
           <h2 className="text-sm font-semibold text-slate-900">Widget</h2>
           <div className="mt-2 flex flex-wrap gap-1.5">

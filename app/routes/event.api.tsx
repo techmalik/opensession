@@ -112,42 +112,44 @@ export default function ApiTokensScreen({ loaderData, actionData, params }: Rout
         </Card>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_340px] [&>*]:min-w-0">
         <Card>
           {tokens.length === 0 ? (
             <EmptyState message="No tokens yet. Create one to call the API." />
           ) : (
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-500">
-                  <th scope="col" className="px-4 py-2 font-medium">Name</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Created</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Last used</th>
-                  <th scope="col" className="px-4 py-2 text-right font-medium">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {tokens.map((token) => (
-                  <tr key={token.id} className="border-b border-slate-100 last:border-0">
-                    <td className="h-10 px-4 font-medium text-slate-900">{token.name}</td>
-                    <td className="px-4 text-slate-500">{formatDateTime(token.createdAt, event.timezone)}</td>
-                    <td className="px-4 text-slate-500">
-                      {token.lastUsedAt ? formatDateTime(token.lastUsedAt, event.timezone) : "Never"}
-                    </td>
-                    <td className="px-4 text-right">
-                      <Form method="post">
-                        <input type="hidden" name="tokenId" value={token.id} />
-                        <button type="submit" name="intent" value="revoke" className="text-[13px] font-medium text-slate-500 hover:text-rose-600">
-                          Revoke
-                        </button>
-                      </Form>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-500">
+                    <th scope="col" className="px-4 py-2 font-medium">Name</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Created</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Last used</th>
+                    <th scope="col" className="px-4 py-2 text-right font-medium">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {tokens.map((token) => (
+                    <tr key={token.id} className="border-b border-slate-100 last:border-0">
+                      <td className="h-10 px-4 font-medium text-slate-900">{token.name}</td>
+                      <td className="px-4 text-slate-500">{formatDateTime(token.createdAt, event.timezone)}</td>
+                      <td className="px-4 text-slate-500">
+                        {token.lastUsedAt ? formatDateTime(token.lastUsedAt, event.timezone) : "Never"}
+                      </td>
+                      <td className="px-4 text-right">
+                        <Form method="post">
+                          <input type="hidden" name="tokenId" value={token.id} />
+                          <button type="submit" name="intent" value="revoke" className="text-[13px] font-medium text-slate-500 hover:text-rose-600">
+                            Revoke
+                          </button>
+                        </Form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
 

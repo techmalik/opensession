@@ -63,7 +63,7 @@ export default function CrmNewContact({ actionData }: Route.ComponentProps) {
       <div className="max-w-[640px]">
         <Card className="p-4">
           <Form method="post" className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label="First name" name="firstName">
                 <input id="firstName" name="firstName" className={inputClass} />
               </Field>
@@ -74,7 +74,7 @@ export default function CrmNewContact({ actionData }: Route.ComponentProps) {
             <Field label="Email" name="email" required>
               <input id="email" name="email" type="email" className={inputClass} required />
             </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label="Job title" name="title">
                 <input id="title" name="title" className={inputClass} />
               </Field>

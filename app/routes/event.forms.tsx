@@ -176,48 +176,50 @@ export default function FormsList({ loaderData, actionData, params }: Route.Comp
           <EmptyState message={total === 0 ? "No forms yet. Create the call for papers below." : "No forms match this filter."} />
         ) : (
           <Form method="post">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-500">
-                  <th scope="col" className="w-8 px-3 py-2">
-                    <span className="sr-only">Select</span>
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium">Name</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Status</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Opens</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Closes</th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">Submissions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                    <td className="px-3">
-                      <input
-                        type="checkbox"
-                        name="ids"
-                        value={row.id}
-                        checked={selected.has(row.id)}
-                        onChange={() => toggle(row.id)}
-                        aria-label={`Select ${row.name}`}
-                        className="accent-accent"
-                      />
-                    </td>
-                    <td className="h-10 px-3">
-                      <Link to={`/admin/${params.eventId}/forms/${row.id}`} className="font-medium text-slate-900 hover:text-accent">
-                        {row.name}
-                      </Link>
-                    </td>
-                    <td className="px-3">
-                      <Badge>{FORM_STATUS_LABEL[row.status] ?? row.status}</Badge>
-                    </td>
-                    <td className="px-3 text-slate-500">{row.opensAt ? formatDate(row.opensAt, event.timezone) : "On publish"}</td>
-                    <td className="px-3 text-slate-500">{row.closesAt ? formatDate(row.closesAt, event.timezone) : "No close date"}</td>
-                    <td className="px-3 text-right tabular-nums text-slate-900">{row.submissionCount}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-500">
+                    <th scope="col" className="w-8 px-3 py-2">
+                      <span className="sr-only">Select</span>
+                    </th>
+                    <th scope="col" className="px-3 py-2 font-medium">Name</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Status</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Opens</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Closes</th>
+                    <th scope="col" className="px-3 py-2 text-right font-medium">Submissions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                      <td className="px-3">
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={row.id}
+                          checked={selected.has(row.id)}
+                          onChange={() => toggle(row.id)}
+                          aria-label={`Select ${row.name}`}
+                          className="accent-accent"
+                        />
+                      </td>
+                      <td className="h-10 px-3">
+                        <Link to={`/admin/${params.eventId}/forms/${row.id}`} className="font-medium text-slate-900 hover:text-accent">
+                          {row.name}
+                        </Link>
+                      </td>
+                      <td className="px-3">
+                        <Badge>{FORM_STATUS_LABEL[row.status] ?? row.status}</Badge>
+                      </td>
+                      <td className="px-3 text-slate-500">{row.opensAt ? formatDate(row.opensAt, event.timezone) : "On publish"}</td>
+                      <td className="px-3 text-slate-500">{row.closesAt ? formatDate(row.closesAt, event.timezone) : "No close date"}</td>
+                      <td className="px-3 text-right tabular-nums text-slate-900">{row.submissionCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {selected.size > 0 ? (
               <div className="flex items-center gap-3 border-t border-slate-200 px-3 py-2.5">

@@ -104,7 +104,7 @@ export default function Login({ loaderData, actionData }: Route.ComponentProps) 
         <p className="mt-1 text-[13px] text-slate-500">
           Sign in to the populated demo event as any role. No password needed.
         </p>
-        <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+        <ul className="mt-3 grid gap-2 sm:grid-cols-3 [&>*]:min-w-0">
           {DEMO_ACCOUNTS.map((account) => (
             <li key={account.key}>
               <Form method="post" action={`/demo/${account.key}`}>

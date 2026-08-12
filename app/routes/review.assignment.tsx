@@ -270,7 +270,7 @@ export default function ReviewAssignment({ loaderData, actionData }: Route.Compo
           </div>
         ) : null}
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_380px]">
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_380px] [&>*]:min-w-0">
           <div className="space-y-4">
             <Card className="p-4">
               <h2 className="text-sm font-semibold text-slate-900">Submission</h2>

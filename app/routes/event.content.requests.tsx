@@ -161,7 +161,7 @@ export default function FileRequests({ loaderData, actionData, params }: Route.C
       {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
       {actionData?.notice ? <Notice>{actionData.notice}</Notice> : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_380px] [&>*]:min-w-0">
         <Card>
           <div className="border-b border-slate-200 px-4 py-2.5">
             <h2 className="text-sm font-semibold text-slate-900">Requests ({requests.length})</h2>

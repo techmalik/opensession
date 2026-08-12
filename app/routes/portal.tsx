@@ -212,7 +212,7 @@ export default function Portal({ loaderData, actionData }: Route.ComponentProps)
         {actionData && "notice" in actionData && actionData.notice ? <Notice>{actionData.notice}</Notice> : null}
 
         {openTasks > 0 || openFiles > 0 ? (
-          <div className="mb-5 grid gap-3 sm:grid-cols-2">
+          <div className="mb-5 grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
             <Card className="p-4">
               <p className="text-2xl font-semibold tabular-nums text-slate-900">{openTasks}</p>
               <p className="mt-0.5 text-[13px] text-slate-500">{openTasks === 1 ? "task" : "tasks"} still to do</p>

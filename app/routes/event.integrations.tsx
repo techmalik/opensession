@@ -174,7 +174,7 @@ export default function Integrations({ loaderData, actionData, params }: Route.C
       {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
       {actionData?.notice ? <Notice>{actionData.notice}</Notice> : null}
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">
         <Card className="p-4">
           <h2 className="text-sm font-semibold text-slate-900">Airtable</h2>
           <p className="mt-0.5 text-[13px] text-slate-500">
@@ -233,24 +233,26 @@ export default function Integrations({ loaderData, actionData, params }: Route.C
                 </p>
               ) : null}
 
-              <table className="mt-3 w-full text-[13px]">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-slate-500">
-                    <th scope="col" className="py-2 font-medium">Table</th>
-                    <th scope="col" className="py-2 text-right font-medium">Local rows</th>
-                    <th scope="col" className="py-2 text-right font-medium">Linked</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {airtable.counts.map((row) => (
-                    <tr key={row.table} className="border-b border-slate-100 last:border-0">
-                      <td className="py-1.5 capitalize text-slate-900">{row.table}</td>
-                      <td className="py-1.5 text-right tabular-nums text-slate-900">{row.local}</td>
-                      <td className="py-1.5 text-right tabular-nums text-slate-500">{row.linked}</td>
+              <div className="overflow-x-auto">
+                <table className="mt-3 w-full text-[13px]">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-slate-500">
+                      <th scope="col" className="py-2 font-medium">Table</th>
+                      <th scope="col" className="py-2 text-right font-medium">Local rows</th>
+                      <th scope="col" className="py-2 text-right font-medium">Linked</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {airtable.counts.map((row) => (
+                      <tr key={row.table} className="border-b border-slate-100 last:border-0">
+                        <td className="py-1.5 capitalize text-slate-900">{row.table}</td>
+                        <td className="py-1.5 text-right tabular-nums text-slate-900">{row.local}</td>
+                        <td className="py-1.5 text-right tabular-nums text-slate-500">{row.linked}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Form method="post">
@@ -348,24 +350,26 @@ export default function Integrations({ loaderData, actionData, params }: Route.C
           )}
 
           <h3 className="mt-4 text-sm font-semibold text-slate-900">Field mapping</h3>
-          <table className="mt-1 w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-slate-500">
-                <th scope="col" className="py-2 font-medium">OpenSession</th>
-                <th scope="col" className="py-2 font-medium">Accelevents</th>
-                <th scope="col" className="py-2 font-medium">Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {accel.fieldMap.map((row) => (
-                <tr key={row.ours} className="border-b border-slate-100 last:border-0">
-                  <td className="py-1.5 font-mono text-xs text-slate-900">{row.ours}</td>
-                  <td className="py-1.5 font-mono text-xs text-slate-900">{row.theirs}</td>
-                  <td className="py-1.5 text-slate-500">{row.note}</td>
+          <div className="overflow-x-auto">
+            <table className="mt-1 w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-slate-500">
+                  <th scope="col" className="py-2 font-medium">OpenSession</th>
+                  <th scope="col" className="py-2 font-medium">Accelevents</th>
+                  <th scope="col" className="py-2 font-medium">Note</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {accel.fieldMap.map((row) => (
+                  <tr key={row.ours} className="border-b border-slate-100 last:border-0">
+                    <td className="py-1.5 font-mono text-xs text-slate-900">{row.ours}</td>
+                    <td className="py-1.5 font-mono text-xs text-slate-900">{row.theirs}</td>
+                    <td className="py-1.5 text-slate-500">{row.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       </div>
     </>

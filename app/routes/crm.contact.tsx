@@ -186,7 +186,7 @@ export default function CrmContact({ loaderData, actionData }: Route.ComponentPr
       {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
       {actionData?.notice ? <Notice>{actionData.notice}</Notice> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-4 xl:grid-cols-[1fr_360px] [&>*]:min-w-0">
         <div className="space-y-4">
           <Card className="p-4">
             <div className="flex items-start gap-4">
@@ -209,7 +209,7 @@ export default function CrmContact({ loaderData, actionData }: Route.ComponentPr
 
             <Form method="post" className="mt-4 space-y-3">
               <input type="hidden" name="intent" value="save-profile" />
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
                 <Field label="First name" name="firstName">
                   <input id="firstName" name="firstName" defaultValue={contact.firstName} className={inputClass} />
                 </Field>
@@ -220,7 +220,7 @@ export default function CrmContact({ loaderData, actionData }: Route.ComponentPr
               <Field label="Email" name="email" required>
                 <input id="email" name="email" type="email" defaultValue={contact.email} className={inputClass} required />
               </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
                 <Field label="Job title" name="title">
                   <input id="title" name="title" defaultValue={contact.title ?? ""} className={inputClass} />
                 </Field>
@@ -231,7 +231,7 @@ export default function CrmContact({ loaderData, actionData }: Route.ComponentPr
               <Field label="Bio" name="bio">
                 <textarea id="bio" name="bio" rows={4} defaultValue={contact.bio ?? ""} className={textareaClass} />
               </Field>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
                 <Field label="Phone" name="phone">
                   <input id="phone" name="phone" defaultValue={contact.phone ?? ""} className={inputClass} />
                 </Field>

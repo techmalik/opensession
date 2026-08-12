@@ -145,7 +145,7 @@ export default function NewSubmission({ loaderData, actionData, params }: Route.
             <textarea id="abstract" name="abstract" rows={5} className={textareaClass} />
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field label="Track" name="trackId">
               <select id="trackId" name="trackId" className={selectClass}>
                 <option value="">No track</option>
@@ -191,7 +191,7 @@ export default function NewSubmission({ loaderData, actionData, params }: Route.
             <h2 className="text-sm font-semibold text-slate-900">Speaker</h2>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field label="Name" name="speakerName" required error={errors.speakerName}>
               <input id="speakerName" name="speakerName" className={inputClass} required />
             </Field>

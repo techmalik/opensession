@@ -447,7 +447,7 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
         <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">{actionData.notice}</div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px] [&>*]:min-w-0">
         <div className="space-y-4">
           <Card className="p-4">
             <h2 className="text-sm font-semibold text-slate-900">Session content</h2>

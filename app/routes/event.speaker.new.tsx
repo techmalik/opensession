@@ -93,7 +93,7 @@ export default function NewSpeaker({ loaderData, actionData, params }: Route.Com
 
       <Card className="max-w-[640px] p-4">
         <Form method="post" className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field label="First name" name="firstName" required>
               <input id="firstName" name="firstName" className={inputClass} required />
             </Field>
@@ -106,7 +106,7 @@ export default function NewSpeaker({ loaderData, actionData, params }: Route.Com
             <input id="email" name="email" type="email" className={inputClass} required />
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field label="Job title" name="title">
               <input id="title" name="title" className={inputClass} />
             </Field>
@@ -119,7 +119,7 @@ export default function NewSpeaker({ loaderData, actionData, params }: Route.Com
             <textarea id="bio" name="bio" rows={5} className={textareaClass} />
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field label="Twitter" name="twitter">
               <input id="twitter" name="twitter" className={inputClass} />
             </Field>

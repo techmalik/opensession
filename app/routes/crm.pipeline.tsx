@@ -117,7 +117,7 @@ export default function CrmPipeline({ loaderData, actionData }: Route.ComponentP
                   ))}
                 </select>
               </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
                 <Field label="Starting stage" name="stage">
                   <select id="stage" name="stage" defaultValue="identified" className={selectClass}>
                     {stages.map((stage) => (

@@ -112,8 +112,16 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="flex">
-        <aside className="fixed inset-y-0 left-0 flex w-[232px] flex-col border-r border-slate-200 bg-white">
+      <div className="flex flex-col lg:flex-row">
+        {/* Sticky and in flow, not fixed: a fixed sidebar is pinned to the viewport
+            top, so it painted straight over the demo banner that root.tsx renders
+            above the shell. Sticky keeps the same behaviour once scrolling and
+            starts below whatever precedes it.
+
+            Below lg the column becomes a band across the top instead. A 232px
+            column leaves 143px of content on a phone and 536px on a tablet, which
+            put every admin page into a horizontal scroll. */}
+        <aside className="flex w-full flex-col border-b border-slate-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:w-[232px] lg:shrink-0 lg:self-start lg:border-b-0 lg:border-r">
           <div className="border-b border-slate-200 p-3">
             <details key={event.id} className="group relative">
               <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-1.5 hover:bg-slate-50">
@@ -153,11 +161,14 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto p-2">
+          {/* One row that scrolls sideways below lg, the familiar column above it.
+              Same markup either way: a second copy of the nav for small screens is a
+              second copy to keep in sync. */}
+          <nav className="flex gap-1 overflow-x-auto p-2 lg:flex-1 lg:flex-col lg:gap-0 lg:overflow-x-visible lg:overflow-y-auto">
             {NAV_GROUPS.map((group, index) => (
-              <div key={index} className={index > 0 ? "mt-4" : ""}>
+              <div key={index} className={`flex shrink-0 items-center gap-1 lg:block lg:gap-0 ${index > 0 ? "lg:mt-4" : ""}`}>
                 {group.label ? (
-                  <p className="px-2 pb-1 text-xs font-medium tracking-wide text-slate-400">{group.label}</p>
+                  <p className="hidden px-2 pb-1 text-xs font-medium tracking-wide text-slate-400 lg:block">{group.label}</p>
                 ) : null}
                 {group.items.map((item) => (
                   <NavLink
@@ -165,7 +176,7 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
                     to={item.to ? `${base}/${item.to}` : base}
                     end={item.end}
                     className={({ isActive }) =>
-                      `block rounded-md px-2 py-1.5 text-[13px] ${
+                      `block whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] ${
                         isActive ? "bg-slate-50 font-medium text-accent" : "text-slate-900 hover:bg-slate-50"
                       }`
                     }
@@ -179,7 +190,7 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
             {/* Everything an organizer reaches from an event but that is not scoped
                 to it: the org-level CRM, the event's own public page, and the API
                 reference. Absolute paths, so they sit outside the NavLink groups. */}
-            <div className="mt-4 border-t border-slate-100 pt-3">
+            <div className="flex shrink-0 items-center gap-1 lg:mt-4 lg:block lg:gap-0 lg:border-t lg:border-slate-100 lg:pt-3">
               {[
                 { to: "/crm", label: "Speaker CRM" },
                 ...(event.slug ? [{ to: `/e/${event.slug}`, label: "Public page" }] : []),
@@ -188,7 +199,7 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className="block rounded-md px-2 py-1.5 text-[13px] text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                  className="block whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                 >
                   {item.label}
                 </Link>
@@ -196,10 +207,10 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
             </div>
           </nav>
 
-          <div className="border-t border-slate-200 p-3">
-            <p className="truncate px-2 text-[13px] text-slate-900">{user.name}</p>
-            <p className="truncate px-2 text-xs capitalize text-slate-500">{user.role}</p>
-            <Form method="post" action="/logout" className="mt-1.5 px-2">
+          <div className="flex items-center gap-2 border-t border-slate-200 px-3 py-2 lg:block lg:p-3">
+            <p className="min-w-0 truncate px-2 text-[13px] text-slate-900">{user.name}</p>
+            <p className="truncate px-2 text-xs capitalize text-slate-500 lg:px-2">{user.role}</p>
+            <Form method="post" action="/logout" className="ml-auto px-2 lg:ml-0 lg:mt-1.5">
               <button type="submit" className="text-[13px] font-medium text-slate-500 hover:text-slate-900">
                 Sign out
               </button>
@@ -207,10 +218,10 @@ export default function EventShell({ loaderData }: Route.ComponentProps) {
           </div>
         </aside>
 
-        {/* flex-1 with min-w-0, not w-full: w-full is 100% of the row and the
-            232px sidebar offset is added on top of it, so a wide table pushed the
-            whole page into a horizontal scroll and the fixed sidebar slid away. */}
-        <main className="ml-[232px] min-w-0 flex-1 p-6">
+        {/* flex-1 with min-w-0, not w-full: w-full is 100% of the row and a wide
+            table would push the whole page into a horizontal scroll. The sidebar
+            takes its own 232px of the row now, so main adds no margin for it. */}
+        <main className="min-w-0 flex-1 p-4 sm:p-6">
           <div className={wide ? "" : "mx-auto w-full max-w-[960px]"}>
             <Outlet />
           </div>

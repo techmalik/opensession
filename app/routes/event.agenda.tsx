@@ -350,7 +350,7 @@ export default function Agenda({ loaderData, actionData, params }: Route.Compone
         </Link>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_280px]">
+      <div className="grid gap-4 xl:grid-cols-[1fr_280px] [&>*]:min-w-0">
         <Card className="overflow-hidden">
           {view === "list" ? (
             <div className="overflow-x-auto">

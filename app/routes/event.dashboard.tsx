@@ -85,7 +85,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 [&>*]:min-w-0">
         <Card className="p-4">
           <p className="text-[13px] text-slate-500">Submissions</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-slate-900">{total}</p>
@@ -122,7 +122,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[320px_1fr]">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[320px_1fr] [&>*]:min-w-0">
         <Card>
           <div className="border-b border-slate-200 px-4 py-2.5">
             <h2 className="text-sm font-semibold text-slate-900">By status</h2>
@@ -155,26 +155,28 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               }
             />
           ) : (
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-500">
-                  <th scope="col" className="px-4 py-2 font-medium">Title</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Status</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Submitted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                    <td className="h-10 px-4 font-medium text-slate-900">{row.title}</td>
-                    <td className="px-4">
-                      <StatusBadge statusKey={row.statusKey ?? "pending"} label={row.statusLabel ?? "Pending"} />
-                    </td>
-                    <td className="px-4 text-slate-500">{formatDateTime(row.submittedAt, event.timezone)}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-500">
+                    <th scope="col" className="px-4 py-2 font-medium">Title</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Status</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Submitted</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recent.map((row) => (
+                    <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                      <td className="h-10 px-4 font-medium text-slate-900">{row.title}</td>
+                      <td className="px-4">
+                        <StatusBadge statusKey={row.statusKey ?? "pending"} label={row.statusLabel ?? "Pending"} />
+                      </td>
+                      <td className="px-4 text-slate-500">{formatDateTime(row.submittedAt, event.timezone)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
       </div>

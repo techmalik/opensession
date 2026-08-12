@@ -166,61 +166,63 @@ export default function Evaluations({ loaderData, actionData, params }: Route.Co
           <EmptyState message={total === 0 ? "No evaluation plans yet. Create the first round below." : "No plans match this filter."} />
         ) : (
           <Form method="post">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-500">
-                  <th scope="col" className="w-8 px-3 py-2">
-                    <span className="sr-only">Select</span>
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium">Plan</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Round</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Scorecard</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Settings</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Due</th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">Reviewers</th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">Progress</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {plans.map((plan) => (
-                  <tr key={plan.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                    <td className="px-3">
-                      <input
-                        type="checkbox"
-                        name="ids"
-                        value={plan.id}
-                        checked={selected.has(plan.id)}
-                        onChange={() => toggle(plan.id)}
-                        aria-label={`Select ${plan.name}`}
-                        className="accent-accent"
-                      />
-                    </td>
-                    <td className="h-10 px-3">
-                      <Link to={`/admin/${params.eventId}/evaluations/${plan.id}`} className="font-medium text-slate-900 hover:text-accent">
-                        {plan.name}
-                      </Link>
-                    </td>
-                    <td className="px-3 tabular-nums text-slate-900">{plan.round}</td>
-                    <td className="px-3 text-slate-500">{plan.scaleType === "rubric" ? "Weighted rubric" : "5-star rating"}</td>
-                    <td className="px-3">
-                      <span className="flex flex-wrap gap-1">
-                        {plan.blind ? <Badge>Blind</Badge> : null}
-                        {plan.anonymized ? <Badge>Anonymized</Badge> : null}
-                      </span>
-                    </td>
-                    <td className="px-3 text-slate-500">{plan.dueAt ? formatDate(plan.dueAt, event.timezone) : ""}</td>
-                    <td className="px-3 text-right tabular-nums text-slate-900">{plan.reviewerCount}</td>
-                    <td className="px-3 text-right tabular-nums text-slate-900">
-                      {plan.doneCount}/{plan.assignmentCount}
-                    </td>
-                    <td className="px-3">
-                      <Badge>{plan.status === "active" ? "Active" : plan.status === "closed" ? "Closed" : "Draft"}</Badge>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-500">
+                    <th scope="col" className="w-8 px-3 py-2">
+                      <span className="sr-only">Select</span>
+                    </th>
+                    <th scope="col" className="px-3 py-2 font-medium">Plan</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Round</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Scorecard</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Settings</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Due</th>
+                    <th scope="col" className="px-3 py-2 text-right font-medium">Reviewers</th>
+                    <th scope="col" className="px-3 py-2 text-right font-medium">Progress</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {plans.map((plan) => (
+                    <tr key={plan.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                      <td className="px-3">
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={plan.id}
+                          checked={selected.has(plan.id)}
+                          onChange={() => toggle(plan.id)}
+                          aria-label={`Select ${plan.name}`}
+                          className="accent-accent"
+                        />
+                      </td>
+                      <td className="h-10 px-3">
+                        <Link to={`/admin/${params.eventId}/evaluations/${plan.id}`} className="font-medium text-slate-900 hover:text-accent">
+                          {plan.name}
+                        </Link>
+                      </td>
+                      <td className="px-3 tabular-nums text-slate-900">{plan.round}</td>
+                      <td className="px-3 text-slate-500">{plan.scaleType === "rubric" ? "Weighted rubric" : "5-star rating"}</td>
+                      <td className="px-3">
+                        <span className="flex flex-wrap gap-1">
+                          {plan.blind ? <Badge>Blind</Badge> : null}
+                          {plan.anonymized ? <Badge>Anonymized</Badge> : null}
+                        </span>
+                      </td>
+                      <td className="px-3 text-slate-500">{plan.dueAt ? formatDate(plan.dueAt, event.timezone) : ""}</td>
+                      <td className="px-3 text-right tabular-nums text-slate-900">{plan.reviewerCount}</td>
+                      <td className="px-3 text-right tabular-nums text-slate-900">
+                        {plan.doneCount}/{plan.assignmentCount}
+                      </td>
+                      <td className="px-3">
+                        <Badge>{plan.status === "active" ? "Active" : plan.status === "closed" ? "Closed" : "Draft"}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {selected.size > 0 ? (
               <div className="flex items-center gap-3 border-t border-slate-200 px-3 py-2.5">
@@ -247,7 +249,7 @@ export default function Evaluations({ loaderData, actionData, params }: Route.Co
       <Card className="mt-4 max-w-[720px] p-4">
         <h2 className="text-sm font-semibold text-slate-900">New evaluation plan</h2>
         <Form method="post" className="mt-4 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field label="Name" name="name" required>
               <input id="name" name="name" placeholder="Initial Review" className={inputClass} required />
             </Field>

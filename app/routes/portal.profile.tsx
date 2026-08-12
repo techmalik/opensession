@@ -158,7 +158,7 @@ export default function PortalProfile({ loaderData, actionData }: Route.Componen
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label="First name" name="firstName" required>
                 <input id="firstName" name="firstName" defaultValue={profile.firstName} className={inputClass} required />
               </Field>
@@ -171,7 +171,7 @@ export default function PortalProfile({ loaderData, actionData }: Route.Componen
               <input id="email" name="email" defaultValue={profile.email} className={inputClass} disabled />
             </Field>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label="Job title" name="title">
                 <input id="title" name="title" defaultValue={profile.title ?? ""} className={inputClass} />
               </Field>
@@ -184,7 +184,7 @@ export default function PortalProfile({ loaderData, actionData }: Route.Componen
               <textarea id="bio" name="bio" rows={6} defaultValue={profile.bio ?? ""} className={textareaClass} />
             </Field>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label="Twitter" name="twitter">
                 <input id="twitter" name="twitter" defaultValue={profile.twitter ?? ""} className={inputClass} />
               </Field>
@@ -199,7 +199,7 @@ export default function PortalProfile({ loaderData, actionData }: Route.Componen
               </Field>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label="Dietary requirements" name="dietary">
                 <input id="dietary" name="dietary" defaultValue={profile.dietary ?? ""} className={inputClass} />
               </Field>

@@ -91,7 +91,7 @@ export default function GalleryWidget({ loaderData }: Route.ComponentProps) {
       {speakers.length === 0 ? (
         <EmptyPublic message={total === 0 ? "No speakers have been published yet." : "No speakers match that name."} />
       ) : (
-        <ul className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <ul className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 [&>*]:min-w-0">
           {speakers.map((speaker) => (
             <li key={speaker.contactId} className="rounded-lg border border-slate-200 p-3">
               <a href={`${base}?speaker=${speaker.contactId}`} className="block">

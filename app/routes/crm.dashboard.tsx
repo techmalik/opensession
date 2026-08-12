@@ -95,7 +95,7 @@ export default function CrmDashboard({ loaderData }: Route.ComponentProps) {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5 [&>*]:min-w-0">
         <Kpi label="Contacts" value={data.totalContacts} to="/crm/contacts" />
         <Kpi label="Events" value={data.totalEvents} to="/admin" />
         <Kpi label="Returning speakers" value={data.returningSpeakers} to="/crm/contacts?hasEvent=yes" />
@@ -103,7 +103,7 @@ export default function CrmDashboard({ loaderData }: Route.ComponentProps) {
         <Kpi label="Not on any event" value={data.withoutEvent} to="/crm/contacts?hasEvent=no" />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
         <BarList title="Top companies" rows={data.topCompanies} hrefFor={(name) => `/crm/contacts?company=${encodeURIComponent(name)}`} />
         <BarList title="Top job titles" rows={data.topTitles} hrefFor={(name) => `/crm/contacts?title=${encodeURIComponent(name)}`} />
 

@@ -56,7 +56,7 @@ export default function CrmFields({ loaderData, actionData }: Route.ComponentPro
       {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
       {actionData?.notice ? <Notice>{actionData.notice}</Notice> : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px] [&>*]:min-w-0">
         <Card>
           {fields.length === 0 ? (
             <EmptyState message="No custom fields yet. Create one on the right." />

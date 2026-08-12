@@ -458,11 +458,11 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
         <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">{actionData.notice}</div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">
         <Card className="p-4">
           <h2 className="text-sm font-semibold text-slate-900">Settings</h2>
           <Form method="post" className="mt-4 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label="Name" name="name" required>
                 <input id="name" name="name" defaultValue={plan.name} className={inputClass} required />
               </Field>
@@ -563,7 +563,7 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
                         <summary className="cursor-pointer text-[13px] font-medium text-accent">Edit criterion</summary>
                         <Form method="post" className="mt-3 space-y-3 border-l-2 border-slate-100 pl-4">
                           <input type="hidden" name="id" value={criterion.id} />
-                          <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
                             <input name="label" defaultValue={criterion.label} aria-label="Criterion label" className={inputClass} required />
                             <select name="kind" defaultValue={criterion.kind} aria-label="Criterion type" className={selectClass}>
                               <option value="numeric">1 to 5 rating</option>
@@ -599,7 +599,7 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
               )}
 
               <Form method="post" className="mt-3 space-y-3 border-t border-slate-200 pt-3">
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
                   <input name="label" placeholder="Criterion, e.g. Originality" aria-label="New criterion label" className={inputClass} required />
                   <select name="kind" aria-label="New criterion type" className={selectClass}>
                     <option value="numeric">1 to 5 rating</option>
@@ -662,7 +662,7 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
           </ul>
         )}
 
-        <div className="mt-3 grid gap-4 border-t border-slate-200 pt-4 lg:grid-cols-2">
+        <div className="mt-3 grid gap-4 border-t border-slate-200 pt-4 lg:grid-cols-2 [&>*]:min-w-0">
           <Form method="post" className="flex flex-wrap items-end gap-2">
             <div className="min-w-56 flex-1 space-y-1.5">
               <label htmlFor="pool-user" className="block text-sm font-medium text-slate-900">
@@ -684,7 +684,7 @@ export default function PlanDetail({ loaderData, actionData, params }: Route.Com
 
           <Form method="post" className="space-y-2">
             <p className="text-sm font-medium text-slate-900">Invite a new evaluator by email</p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2 [&>*]:min-w-0">
               <input name="inviteName" placeholder="Name" aria-label="Evaluator name" className={inputClass} />
               <input name="inviteEmail" type="email" placeholder="Email" aria-label="Evaluator email" className={inputClass} />
             </div>

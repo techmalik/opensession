@@ -128,7 +128,7 @@ export default function CrmEmail({ loaderData, actionData }: Route.ComponentProp
           </p>
         </Card>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
+        <div className="grid gap-4 xl:grid-cols-[1fr_340px] [&>*]:min-w-0">
           <Card className="p-4">
             <Form method="post" className="space-y-3">
               {ids.map((id) => (

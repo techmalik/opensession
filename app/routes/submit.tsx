@@ -1207,7 +1207,7 @@ export default function Submit({ loaderData, actionData }: Route.ComponentProps)
               <Form method="post" className="mt-4 space-y-3 border-t border-slate-200 pt-4">
                 <input type="hidden" name="sid" value={current.id} />
                 {errors.coName ? <p className="text-sm text-rose-600">{errors.coName}</p> : null}
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
                   <input name="coName" placeholder="Name" aria-label="Co-speaker name" className={publicInput} />
                   <input name="coEmail" type="email" placeholder="Email" aria-label="Co-speaker email" className={publicInput} />
                   <input name="coTitle" placeholder="Job title (optional)" aria-label="Co-speaker job title" className={publicInput} />
