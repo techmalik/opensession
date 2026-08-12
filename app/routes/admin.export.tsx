@@ -7,15 +7,18 @@ import type { Route } from "./+types/admin.export";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { csvResponse, toCsv } from "../lib/format";
+import { eventAccessFilter } from "../lib/events.server";
 import { events } from "../../database/schema";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") ?? "").trim();
   const status = url.searchParams.get("status") ?? "";
 
   const filters = [
+    // Same scoping as the list this exports.
+    eventAccessFilter(user),
     q ? or(like(events.name, `%${q}%`), like(events.location, `%${q}%`)) : undefined,
     status === "draft" || status === "active" || status === "archived" ? eq(events.status, status) : undefined,
   ].filter(Boolean);

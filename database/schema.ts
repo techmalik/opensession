@@ -579,7 +579,7 @@ export const jobs = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     kind: text("kind", {
-      enum: ["email", "airtable_push", "airtable_pull", "reminder", "digest", "accelevents_push"],
+      enum: ["email", "airtable_push", "airtable_pull", "reminder", "digest", "accelevents_push", "task_reminder"],
     }).notNull(),
     payloadJson: text("payload_json").notNull().default("{}"),
     runAfter: integer("run_after", { mode: "timestamp" }).notNull(),
@@ -589,6 +589,24 @@ export const jobs = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   },
   (t) => [index("jobs_status_idx").on(t.status, t.runAfter)]
+);
+
+// One row per (speaker, deliverable) that has been reminded about, holding the last
+// time we mailed them about it. The cron consults this instead of any in-memory
+// state: it runs in a fresh isolate every five minutes, so "at most once a day"
+// only means anything if it is written down.
+export const taskReminders = sqliteTable(
+  "task_reminders",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    eventId: integer("event_id").notNull(),
+    contactId: integer("contact_id").notNull(),
+    // "task" = portal_tasks row, "file_request" = file_requests row
+    kind: text("kind", { enum: ["task", "file_request"] }).notNull(),
+    refId: integer("ref_id").notNull(),
+    lastRemindedAt: integer("last_reminded_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [uniqueIndex("task_reminders_uq").on(t.contactId, t.kind, t.refId)]
 );
 
 // ---------- Airtable two-way sync ----------

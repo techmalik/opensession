@@ -67,7 +67,7 @@ const levelNames = ["Beginner", "Intermediate", "Advanced"];
 const statusRows = [
   ["pending", "Pending", "#94a3b8", 1],
   ["accept_queue", "Accept Queue", "#0284c7", 2],
-  ["accepted", "Accepted", "#0d9166", 3],
+  ["accepted", "Accepted", "#0b7b57", 3],
   ["decline_queue", "Decline Queue", "#d97706", 4],
   ["declined", "Declined", "#e11d48", 5],
 ];
@@ -111,6 +111,9 @@ const main = async () => {
     );
   }
 
+  // created_by 5 is organizer@demo.meridian.dev, the demo organizer. Events are scoped
+  // to their creator (app/lib/events.server.ts), so this is what keeps the demo event
+  // open to the demo login on a fresh install, without a backfill having to run.
   push(
     `INSERT INTO events (id,name,slug,tagline,description,location,timezone,starts_at,ends_at,status,agenda_published_at,created_by,created_at) VALUES (${EV},'Meridian Dev Summit 2027','meridian-dev-summit-2027','Systems, tooling, and the people who run them','A two-day, three-track conference for platform and tooling engineers.','Harbourfront Centre, Toronto','America/Toronto',${ts("2027-06-10T13:00:00Z")},${ts("2027-06-11T23:00:00Z")},'active',${NOW},5,${NOW});`
   );
@@ -131,7 +134,7 @@ const main = async () => {
     push(`INSERT INTO event_contacts (event_id,contact_id,kind,status) VALUES (${EV},${c.id},'speaker',${q(c.status ?? "invited")});`);
   }
 
-  tracks.forEach((t, i) => push(`INSERT INTO tracks (id,event_id,name,color,sort) VALUES (${i + 1},${EV},${q(t)},${q(["#0d9166", "#0284c7", "#7c3aed"][i])},${i});`));
+  tracks.forEach((t, i) => push(`INSERT INTO tracks (id,event_id,name,color,sort) VALUES (${i + 1},${EV},${q(t)},${q(["#0b7b57", "#0284c7", "#7c3aed"][i])},${i});`));
   formats.forEach(([n, d], i) => push(`INSERT INTO formats (id,event_id,name,duration_min,sort) VALUES (${i + 1},${EV},${q(n)},${d},${i});`));
   levelNames.forEach((n, i) => push(`INSERT INTO levels (id,event_id,name,sort) VALUES (${i + 1},${EV},${q(n)},${i});`));
   rooms.forEach((n, i) => push(`INSERT INTO rooms (id,event_id,name,capacity,sort) VALUES (${i + 1},${EV},${q(n)},${[600, 120, 120, 60][i]},${i});`));

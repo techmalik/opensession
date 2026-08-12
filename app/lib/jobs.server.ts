@@ -1,6 +1,5 @@
 // Outbox job runner, invoked by the Worker's scheduled() cron every 5 minutes.
 // Claims up to 25 due jobs and executes by kind. Each handler must be idempotent.
-// Phase 4 fills in the handlers; the runner loop is final.
 
 import { drizzle } from "drizzle-orm/d1";
 import { and, eq, lte } from "drizzle-orm";
@@ -47,6 +46,13 @@ const handlers: Record<string, Handler> = {
   digest: async (_env, payload) => {
     const { sendSpeakerDigest } = await import("./notifications.server");
     await sendSpeakerDigest(Number(payload.eventId));
+  },
+  // Payload: { eventId, hour }. Deadline reminders for portal tasks and file requests
+  // that are overdue or due within 48 hours. Scheduled hourly; the send itself will
+  // not mail the same speaker about the same item twice in 24 hours.
+  task_reminder: async (_env, payload) => {
+    const { sendTaskReminders } = await import("./notifications.server");
+    await sendTaskReminders(Number(payload.eventId));
   },
   // Payload: {}. Hourly Accelevents push, only when the integration is enabled.
   accelevents_push: async (env) => {

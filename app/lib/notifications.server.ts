@@ -1,7 +1,7 @@
-// Scheduled mail: CFP close reminders and the weekly speaker digest. Both are
-// driven by the jobs table, both are safe to run twice, and both write to
-// email_sends first so Communications shows the evidence whether or not a provider
-// key is set.
+// Scheduled mail: CFP close reminders, deadline reminders for portal tasks and file
+// requests, and the weekly speaker digest. All three are driven by the jobs table,
+// all three are safe to run twice, and all three write to email_sends first so
+// Communications shows the evidence whether or not a provider key is set.
 //
 // Scheduling and sending are separate on purpose. ensureScheduledJobs() only creates
 // job rows (idempotently, keyed on the payload), and the job runner calls the send
@@ -27,6 +27,7 @@ import {
   sessionParticipants,
   sessions,
   taskCompletions,
+  taskReminders,
 } from "../../database/schema";
 
 const DAY_MS = 86_400_000;
@@ -41,6 +42,11 @@ export function weekKey(date: Date): string {
   return `${target.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+/** UTC hour key, so "one sweep per event per hour" needs no extra bookkeeping. */
+export function hourBucket(date: Date): string {
+  return date.toISOString().slice(0, 13); // YYYY-MM-DDTHH
+}
+
 function parseDays(raw: string): number[] {
   try {
     const parsed = JSON.parse(raw);
@@ -52,7 +58,11 @@ function parseDays(raw: string): number[] {
 
 /** Creates a job only if one with the same kind and payload does not exist yet, in
  *  any state. Re-running the sweep every five minutes must not pile up work. */
-async function ensureJob(kind: "reminder" | "digest", payload: Record<string, unknown>, runAfter: Date): Promise<boolean> {
+async function ensureJob(
+  kind: "reminder" | "digest" | "task_reminder",
+  payload: Record<string, unknown>,
+  runAfter: Date
+): Promise<boolean> {
   const db = getDb();
   const payloadJson = JSON.stringify(payload);
   const existing = await db
@@ -67,10 +77,13 @@ async function ensureJob(kind: "reminder" | "digest", payload: Record<string, un
 
 /** Called at the top of every job run. Turns form reminder settings and the weekly
  *  digest cadence into concrete, dated job rows. */
-export async function ensureScheduledJobs(now = new Date()): Promise<{ reminders: number; digests: number }> {
+export async function ensureScheduledJobs(
+  now = new Date()
+): Promise<{ reminders: number; digests: number; taskReminders: number }> {
   const db = getDb();
   let reminders = 0;
   let digests = 0;
+  let taskReminders = 0;
 
   const openForms = await db
     .select({ id: forms.id, closesAt: forms.closesAt, reminderDaysJson: forms.reminderDaysJson, status: forms.status })
@@ -91,9 +104,13 @@ export async function ensureScheduledJobs(now = new Date()): Promise<{ reminders
   const activeEvents = await db.select({ id: events.id }).from(events).where(eq(events.status, "active")).all();
   for (const event of activeEvents) {
     if (await ensureJob("digest", { eventId: event.id, week: weekKey(now) }, now)) digests += 1;
+    // Hourly, not daily: a deadline reminder that waits until tomorrow to notice an
+    // overdue task is not a reminder. Sending stays bounded by the per-item
+    // once-a-day rule in taskReminderTargets, not by how often we look.
+    if (await ensureJob("task_reminder", { eventId: event.id, hour: hourBucket(now) }, now)) taskReminders += 1;
   }
 
-  return { reminders, digests };
+  return { reminders, digests, taskReminders };
 }
 
 export interface ReminderRecipient {
@@ -310,6 +327,187 @@ export async function sendSpeakerDigest(eventId: number): Promise<number> {
       },
     })),
   });
+}
+
+// ---------- Deadline reminders for portal tasks and file requests ----------
+
+/** How far ahead a deadline counts as "coming up". */
+const DUE_SOON_MS = 48 * 3_600_000;
+/** How long a speaker is left alone about the same item once they have been told. */
+const REMIND_EVERY_MS = 24 * 3_600_000;
+
+export interface DueItem {
+  kind: "task" | "file_request";
+  refId: number;
+  title: string;
+  dueAt: Date;
+  overdue: boolean;
+}
+
+export interface TaskReminderTarget {
+  contactId: number;
+  name: string;
+  firstName: string;
+  email: string;
+  items: DueItem[];
+}
+
+/** Speakers with a portal task still open or a file request still unfulfilled whose
+ *  deadline has passed or falls inside the next 48 hours. Items this speaker was
+ *  already reminded about in the last 24 hours are dropped, so a five-minute cron
+ *  mails each deadline at most once a day. */
+export async function taskReminderTargets(eventId: number, now = new Date()): Promise<TaskReminderTarget[]> {
+  const db = getDb();
+  const horizon = new Date(now.getTime() + DUE_SOON_MS);
+  const resolver = await loadAudiences(eventId);
+
+  const taskRows = (await db.select().from(portalTasks).where(eq(portalTasks.eventId, eventId)).all()).filter(
+    (row): row is typeof row & { dueAt: Date } => row.dueAt != null && row.dueAt.getTime() <= horizon.getTime()
+  );
+  const requestRows = (await db.select().from(fileRequests).where(eq(fileRequests.eventId, eventId)).all()).filter(
+    (row): row is typeof row & { dueAt: Date } => row.dueAt != null && row.dueAt.getTime() <= horizon.getTime()
+  );
+  if (taskRows.length === 0 && requestRows.length === 0) return [];
+
+  const completions =
+    taskRows.length > 0
+      ? await db
+          .select()
+          .from(taskCompletions)
+          .where(inArray(taskCompletions.taskId, taskRows.map((row) => row.id)))
+          .all()
+      : [];
+  const uploads =
+    requestRows.length > 0
+      ? await db
+          .select({ requestId: fileUploads.requestId, contactId: fileUploads.contactId })
+          .from(fileUploads)
+          .where(inArray(fileUploads.requestId, requestRows.map((row) => row.id)))
+          .all()
+      : [];
+
+  const sent = await db.select().from(taskReminders).where(eq(taskReminders.eventId, eventId)).all();
+  const recentlyReminded = new Set(
+    sent
+      .filter((row) => now.getTime() - row.lastRemindedAt.getTime() < REMIND_EVERY_MS)
+      .map((row) => `${row.contactId}:${row.kind}:${row.refId}`)
+  );
+
+  const owed = new Map<number, DueItem[]>();
+  const add = (contactId: number, item: DueItem) => {
+    if (recentlyReminded.has(`${contactId}:${item.kind}:${item.refId}`)) return;
+    owed.set(contactId, [...(owed.get(contactId) ?? []), item]);
+  };
+
+  for (const task of taskRows) {
+    const audience = resolveAudience(resolver, task.appliesTo as Audience, resolver.taskSelected.get(task.id));
+    for (const contactId of audience) {
+      const done = completions.some(
+        (row) => row.taskId === task.id && row.contactId === contactId && row.status === "done"
+      );
+      if (done) continue;
+      add(contactId, {
+        kind: "task",
+        refId: task.id,
+        title: task.title,
+        dueAt: task.dueAt,
+        overdue: task.dueAt.getTime() < now.getTime(),
+      });
+    }
+  }
+
+  for (const request of requestRows) {
+    const audience = resolveAudience(resolver, request.appliesTo as Audience, resolver.requestSelected.get(request.id));
+    for (const contactId of audience) {
+      if (uploads.some((row) => row.requestId === request.id && row.contactId === contactId)) continue;
+      add(contactId, {
+        kind: "file_request",
+        refId: request.id,
+        title: request.title,
+        dueAt: request.dueAt,
+        overdue: request.dueAt.getTime() < now.getTime(),
+      });
+    }
+  }
+
+  if (owed.size === 0) return [];
+
+  const people = await db
+    .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email })
+    .from(contacts)
+    .where(inArray(contacts.id, [...owed.keys()]))
+    .all();
+
+  return people
+    .filter((person) => person.email)
+    .map((person) => ({
+      contactId: person.id,
+      name: `${person.firstName} ${person.lastName}`.trim() || person.email,
+      firstName: person.firstName || person.email,
+      email: person.email,
+      items: (owed.get(person.id) ?? []).sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime()),
+    }));
+}
+
+const TASK_REMINDER_TEMPLATE = {
+  subject: "{event_name}: deadlines coming up",
+  body:
+    "<p>Hi {first_name},</p><p>These {event_name} items are due:</p>{task_list}" +
+    "<p>You can complete them from your speaker portal.</p>{portal_button}",
+};
+
+/** Queues one reminder per speaker with something due, then records what each of them
+ *  was told about so the next tick leaves those items alone for a day. */
+export async function sendTaskReminders(eventId: number, now = new Date()): Promise<number> {
+  const db = getDb();
+  const event = await db
+    .select({ id: events.id, name: events.name, timezone: events.timezone })
+    .from(events)
+    .where(eq(events.id, eventId))
+    .get();
+  if (!event) return 0;
+
+  const targets = await taskReminderTargets(eventId, now);
+  if (targets.length === 0) return 0;
+
+  const stored = await getTemplate(eventId, "task_reminder");
+  const subject = stored.subject || TASK_REMINDER_TEMPLATE.subject;
+  const body = stored.body || TASK_REMINDER_TEMPLATE.body;
+
+  const queued = await queueBulk({
+    event: { id: event.id, name: event.name },
+    templateKey: "task_reminder",
+    subject,
+    body,
+    recipients: targets.map((target) => ({
+      person: target,
+      extras: {
+        task_list: `<ul>${target.items
+          .map(
+            (item) =>
+              `<li>${escapeHtml(item.title)}, ${item.overdue ? "was due" : "due"} ${escapeHtml(
+                formatDate(item.dueAt, event.timezone) || ""
+              )}${item.overdue ? " (overdue)" : ""}</li>`
+          )
+          .join("")}</ul>`,
+        due_count: String(target.items.length),
+      },
+    })),
+  });
+
+  for (const target of targets) {
+    for (const item of target.items) {
+      await db
+        .insert(taskReminders)
+        .values({ eventId, contactId: target.contactId, kind: item.kind, refId: item.refId, lastRemindedAt: now })
+        .onConflictDoUpdate({
+          target: [taskReminders.contactId, taskReminders.kind, taskReminders.refId],
+          set: { lastRemindedAt: now, eventId },
+        });
+    }
+  }
+
+  return queued;
 }
 
 /** Every session this contact is on, used by the digest preview in Communications. */

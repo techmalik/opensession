@@ -4,6 +4,7 @@ import type { Route } from "./+types/admin";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { formatDateRange } from "../lib/format";
+import { eventAccessFilter } from "../lib/events.server";
 import { events } from "../../database/schema";
 import {
   Card,
@@ -27,6 +28,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const status = url.searchParams.get("status") ?? "";
 
   const filters = [
+    // Always first: an organizer's list is their own events, plus the demo event for
+    // the demo logins. Admins get the unfiltered list.
+    eventAccessFilter(user),
     q ? or(like(events.name, `%${q}%`), like(events.location, `%${q}%`)) : undefined,
     status === "draft" || status === "active" || status === "archived" ? eq(events.status, status) : undefined,
   ].filter(Boolean);
@@ -56,7 +60,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
   const ids = form.getAll("ids").map(Number).filter((n) => Number.isInteger(n) && n > 0);
@@ -65,12 +69,23 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent !== "archive" && intent !== "activate") return { flash: null };
 
   const db = getDb();
+  // Bulk actions are filtered by the same rule as the list, not trusted from the
+  // posted ids: the checkboxes are only as trustworthy as the browser that sent them.
+  const access = eventAccessFilter(user);
+  const scoped = [inArray(events.id, ids), access].filter(Boolean);
+  const allowed = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(and(...scoped))
+    .all();
+  if (allowed.length === 0) return { flash: "None of those events are yours to change." };
+
   await db
     .update(events)
     .set({ status: intent === "archive" ? "archived" : "active" })
-    .where(inArray(events.id, ids));
+    .where(inArray(events.id, allowed.map((row) => row.id)));
 
-  const noun = ids.length === 1 ? "1 event" : `${ids.length} events`;
+  const noun = allowed.length === 1 ? "1 event" : `${allowed.length} events`;
   return { flash: intent === "archive" ? `${noun} archived.` : `${noun} made active.` };
 }
 

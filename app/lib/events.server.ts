@@ -2,11 +2,44 @@
 // under a minute for the eval agent, so this does the setup an organizer would
 // otherwise have to click through.
 
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne, or, type SQL } from "drizzle-orm";
 import { getDb } from "./db.server";
 import { slugify } from "./format";
+import { DEMO_EVENT_SLUG, isDemoAccountEmail } from "./roles";
 import { featuredEventSlug } from "./settings.server";
 import { emailTemplates, events, formats, levels, rooms, statuses, tracks } from "../../database/schema";
+
+// ---------- Who may open which event ----------
+//
+// An event belongs to the organizer who created it. Anyone can sign up as an
+// organizer, so without this an unknown account saw, and could edit, every event in
+// the instance. Three ways in, and no others: you created it, you are an admin, or it
+// is the seeded demo event and you are one of the seeded demo logins.
+
+export interface EventOwner {
+  id: number;
+  email: string;
+  role: string;
+}
+
+export interface ScopedEvent {
+  slug: string;
+  createdBy: number | null;
+}
+
+export function canAccessEvent(user: EventOwner, event: ScopedEvent): boolean {
+  if (user.role === "admin") return true;
+  if (event.createdBy != null && event.createdBy === user.id) return true;
+  return event.slug === DEMO_EVENT_SLUG && isDemoAccountEmail(user.email);
+}
+
+/** The same rule as canAccessEvent, as a WHERE clause for list queries. Undefined
+ *  means "no restriction", which is only ever returned for admins. */
+export function eventAccessFilter(user: EventOwner): SQL | undefined {
+  if (user.role === "admin") return undefined;
+  const own = eq(events.createdBy, user.id);
+  return isDemoAccountEmail(user.email) ? or(own, eq(events.slug, DEMO_EVENT_SLUG)) : own;
+}
 
 /** The five system statuses, in pipeline order. Vocabulary is fixed by CLAUDE.md. */
 export const SYSTEM_STATUSES: { key: string; label: string; color: string }[] = [

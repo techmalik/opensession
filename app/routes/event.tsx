@@ -1,10 +1,35 @@
 import { Form, Link, NavLink, Outlet, isRouteErrorResponse, useMatches, useRouteError } from "react-router";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Route } from "./+types/event";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
+import { canAccessEvent, eventAccessFilter } from "../lib/events.server";
 import { CommandPalette } from "../components/palette";
 import { events } from "../../database/schema";
+
+/** Runs before every loader and action under /admin/:eventId, including the resource
+ *  routes (CSV, ZIP, palette.json). A loader guard alone would not do: actions run
+ *  first, so a POST to a child route would have written its change before this
+ *  route's loader ever got the chance to say no. */
+export const middleware: Route.MiddlewareFunction[] = [
+  async ({ request, params }, next) => {
+    const user = await requireOrganizer(request);
+    const eventId = Number(params.eventId);
+    if (!Number.isInteger(eventId)) throw new Response("Event not found", { status: 404 });
+
+    const event = await getDb()
+      .select({ slug: events.slug, createdBy: events.createdBy })
+      .from(events)
+      .where(eq(events.id, eventId))
+      .get();
+    if (!event) throw new Response("Event not found", { status: 404 });
+    if (!canAccessEvent(user, event)) {
+      throw new Response("This event belongs to another organizer.", { status: 403 });
+    }
+
+    return next();
+  },
+];
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const user = await requireOrganizer(request);
@@ -19,14 +44,25 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       slug: events.slug,
       timezone: events.timezone,
       status: events.status,
+      createdBy: events.createdBy,
     })
     .from(events)
     .where(eq(events.id, eventId))
     .get();
 
   if (!event) throw new Response("Event not found", { status: 404 });
+  if (!canAccessEvent(user, event)) {
+    throw new Response("This event belongs to another organizer.", { status: 403 });
+  }
 
-  const allEvents = await db.select({ id: events.id, name: events.name }).from(events).orderBy(asc(events.name)).all();
+  // The event switcher offers only what this organizer may open.
+  const access = eventAccessFilter(user);
+  const allEvents = await db
+    .select({ id: events.id, name: events.name })
+    .from(events)
+    .where(access ? and(access) : undefined)
+    .orderBy(asc(events.name))
+    .all();
 
   return { user, event, allEvents };
 }

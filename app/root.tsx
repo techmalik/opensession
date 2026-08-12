@@ -7,6 +7,7 @@ import {
   Scripts,
   ScrollRestoration,
   Link,
+  useLocation,
   useRouteLoaderData,
 } from "react-router";
 
@@ -18,6 +19,12 @@ import { RouteProgress } from "./components/ui";
 import { homeLabelFor, landingFor } from "./lib/roles";
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  // Widgets are pure server-rendered HTML, per CLAUDE.md. Shipping the router runtime
+  // to them was also breaking real third-party embedding: hydration reads
+  // sessionStorage, which throws in a cross-origin frame whose storage the browser
+  // blocks, and the failed hydration wipes the rendered markup to a blank page.
+  const embedded = useLocation().pathname.startsWith("/embed/v1/");
+
   return (
     <html lang="en">
       <head>
@@ -30,8 +37,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body className="antialiased">
         {children}
-        <ScrollRestoration />
-        <Scripts />
+        {embedded ? null : (
+          <>
+            <ScrollRestoration />
+            <Scripts />
+          </>
+        )}
       </body>
     </html>
   );

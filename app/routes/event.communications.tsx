@@ -17,7 +17,14 @@ import {
   MERGE_TAGS,
 } from "../lib/comms.server";
 import { deliverEmail, renderTemplate, sendEmail } from "../lib/email";
-import { reminderRecipients, digestRecipients, sendFormReminders, sendSpeakerDigest } from "../lib/notifications.server";
+import {
+  reminderRecipients,
+  digestRecipients,
+  sendFormReminders,
+  sendSpeakerDigest,
+  sendTaskReminders,
+  taskReminderTargets,
+} from "../lib/notifications.server";
 import { formatDate, formatDateTime } from "../lib/format";
 import { emailSends, events, forms, jobs } from "../../database/schema";
 import {
@@ -125,6 +132,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     mergeTags: MERGE_TAGS,
     reminderTargets,
     digestPending: (await digestRecipients(eventId)).length,
+    taskReminderPending: (await taskReminderTargets(eventId)).length,
     scheduled,
     userEmail: user.email,
     providerConfigured: Boolean(bindings.BREVO_API_KEY),
@@ -210,6 +218,17 @@ export async function action({ request, params }: Route.ActionArgs) {
     };
   }
 
+  if (intent === "run-task-reminders") {
+    const queued = await sendTaskReminders(eventId);
+    return {
+      error: null,
+      notice:
+        queued === 0
+          ? "No speaker has a task or file request due in the next 48 hours that they have not already been reminded about today."
+          : `Queued ${queued} task reminder ${queued === 1 ? "email" : "emails"}.`,
+    };
+  }
+
   if (intent === "run-digest") {
     const queued = await sendSpeakerDigest(eventId);
     return {
@@ -259,6 +278,7 @@ export default function Communications({ loaderData, actionData, params }: Route
     mergeTags,
     reminderTargets,
     digestPending,
+    taskReminderPending,
     scheduled,
     userEmail,
     providerConfigured,
@@ -391,8 +411,9 @@ export default function Communications({ loaderData, actionData, params }: Route
           <Card className="p-4">
             <h2 className="text-sm font-semibold text-slate-900">Scheduled sends</h2>
             <p className="mt-0.5 text-[13px] text-slate-500">
-              The cron runs every five minutes. Reminders are scheduled from each form's reminder days before it closes;
-              the digest runs once a week per event.
+              The cron runs every five minutes. CFP reminders are scheduled from each form's reminder days before it
+              closes; task reminders go out for anything overdue or due within 48 hours, at most once a day per speaker
+              per item; the digest runs once a week per event.
             </p>
 
             <div className="mt-3 space-y-2">
@@ -417,6 +438,21 @@ export default function Communications({ loaderData, actionData, params }: Route
                   </div>
                 ))
               )}
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <p className="text-[13px] text-slate-900">
+                  Task and file request deadlines
+                  <span className="text-slate-500">
+                    , {taskReminderPending}{" "}
+                    {taskReminderPending === 1 ? "speaker is" : "speakers are"} due a reminder
+                  </span>
+                </p>
+                <Form method="post">
+                  <button type="submit" name="intent" value="run-task-reminders" className={buttonSecondary}>
+                    Send task reminders now
+                  </button>
+                </Form>
+              </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[13px] text-slate-900">

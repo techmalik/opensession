@@ -45,6 +45,14 @@ const BUILT_IN: Record<string, TemplateBody> = {
     subject: "{event_name}: what is still outstanding",
     body: "<p>Hi {first_name},</p><p>This is your weekly summary for {event_name}.</p>{task_list}{portal_button}",
   },
+  task_reminder: {
+    key: "task_reminder",
+    name: "Task deadline reminder",
+    subject: "{event_name}: deadlines coming up",
+    body:
+      "<p>Hi {first_name},</p><p>These {event_name} items are due:</p>{task_list}" +
+      "<p>You can complete them from your speaker portal.</p>{portal_button}",
+  },
   portal_invite: {
     key: "portal_invite",
     name: "Speaker portal invite",
