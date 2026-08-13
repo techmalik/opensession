@@ -70,10 +70,19 @@ export function slugify(input: string): string {
     .slice(0, 60);
 }
 
-/** RFC 4180 quoting: a field containing a quote, comma, or newline is quoted. */
+/** RFC 4180 quoting, plus spreadsheet formula neutralization.
+ *
+ *  Excel and LibreOffice evaluate a cell that opens with =, +, -, or @, so a speaker
+ *  whose name or title starts with one of those turns an export into code the
+ *  organizer runs by double-clicking the file. A leading apostrophe makes the cell
+ *  literal text; the apostrophe itself is not shown by either program. Numbers are
+ *  passed through as numbers, so score and count columns are untouched. */
 export function toCsv(headers: string[], rows: (string | number | null | undefined)[][]): string {
+  const neutralize = (text: string) => (/^[\s\u0000-\u001f]*[=+\-@]/.test(text) ? `'${text}` : text);
   const escape = (cell: string | number | null | undefined) => {
-    const text = cell == null ? "" : String(cell);
+    if (cell == null) return "";
+    if (typeof cell === "number") return String(cell);
+    const text = neutralize(String(cell));
     return /["\n,]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
   return [headers, ...rows].map((row) => row.map(escape).join(",")).join("\r\n");

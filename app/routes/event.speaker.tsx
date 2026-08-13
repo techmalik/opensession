@@ -7,6 +7,7 @@ import type { Route } from "./+types/event.speaker";
 import { bindings, getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { getTemplate, queueBulk } from "../lib/comms.server";
+import { RASTER_ACCEPT, RASTER_HELP, RASTER_REJECTED, sniffImageType } from "../lib/image-type";
 import { newBlobKey, putFile } from "../lib/storage";
 import { taskMatrix } from "../lib/tasks.server";
 
@@ -19,6 +20,7 @@ import {
   events,
   fileRequests,
   fileUploads,
+  portalTasks,
   rooms,
   sessionParticipants,
   sessions,
@@ -174,8 +176,14 @@ export async function action({ request, params }: Route.ActionArgs) {
     let headshotBlobKey: string | undefined;
     if (headshot instanceof File && headshot.size > 0) {
       if (headshot.size > MAX_HEADSHOT_BYTES) return { error: "That image is larger than 5 MB.", notice: null };
+      // Magic bytes, not the declared type: an upload that is not really a raster
+      // image never reaches storage, so nothing serving it back can be markup.
+      const data = await headshot.arrayBuffer();
+      const imageType = sniffImageType(data);
+      if (!imageType) return { error: RASTER_REJECTED, notice: null };
+
       const key = newBlobKey(`headshot-${contactId}`, headshot.name || "headshot.png");
-      await putFile(bindings, key, await headshot.arrayBuffer(), headshot.type || "image/png");
+      await putFile(bindings, key, data, imageType);
       headshotBlobKey = key;
       await db.insert(fileUploads).values({
         requestId: null,
@@ -185,7 +193,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         version: 1,
         blobKey: key,
         filename: headshot.name || "headshot.png",
-        contentType: headshot.type || "image/png",
+        contentType: imageType,
         size: headshot.size,
         approval: "approved",
         uploadedBy: user.id,
@@ -230,6 +238,13 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "toggle-task") {
     const taskId = Number(form.get("taskId") ?? 0);
     const done = String(form.get("done") ?? "") === "1";
+    // Completion rows carry no event, so the task is resolved against this one first.
+    const owned = await db
+      .select({ id: portalTasks.id })
+      .from(portalTasks)
+      .where(and(eq(portalTasks.id, taskId), eq(portalTasks.eventId, eventId)))
+      .get();
+    if (!owned) return { error: "That task does not belong to this event.", notice: null };
     const existing = await db
       .select({ id: taskCompletions.id })
       .from(taskCompletions)
@@ -299,18 +314,18 @@ export default function SpeakerDetail({ loaderData, actionData, params }: Route.
               <div className="flex items-start gap-4">
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
                   {headshotUploadId ? (
-                    <img src={`/files/${headshotUploadId}?inline=1`} alt={`Headshot of ${name}`} className="h-full w-full object-cover" />
+                    <img src={`/files/${headshotUploadId}/image`} alt={`Headshot of ${name}`} className="h-full w-full object-cover" />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center text-xs text-slate-400">No photo</span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <Field label="Headshot" name="headshot" help="PNG, JPEG, or WebP, up to 5 MB.">
+                  <Field label="Headshot" name="headshot" help={RASTER_HELP}>
                     <input
                       id="headshot"
                       name="headshot"
                       type="file"
-                      accept="image/png,image/jpeg,image/webp"
+                      accept={RASTER_ACCEPT}
                       className="block w-full text-sm text-slate-900 file:mr-3 file:h-9 file:rounded-md file:border file:border-slate-200 file:bg-white file:px-3 file:text-sm file:font-medium file:text-slate-900"
                     />
                   </Field>

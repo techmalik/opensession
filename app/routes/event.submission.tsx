@@ -276,8 +276,19 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export async function action({ request, params }: Route.ActionArgs) {
   const user = await requireOrganizer(request);
   const eventId = Number(params.eventId);
-  const sessionId = Number(params.sessionId);
   const db = getDb();
+
+  // The route event is authorized by the /admin/:eventId guard; the session id in
+  // the path is not. Resolve it against both before any branch runs, and use only
+  // the verified row, so another event's submission cannot be driven through a URL
+  // this organizer is allowed to post to.
+  const owned = await db
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(and(eq(sessions.id, Number(params.sessionId)), eq(sessions.eventId, eventId)))
+    .get();
+  if (!owned) throw new Response("Submission not found", { status: 404 });
+  const sessionId = owned.id;
 
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");

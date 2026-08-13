@@ -25,7 +25,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const db = getDb();
   const event = await db.select().from(events).where(eq(events.id, Number(params.eventId))).get();
   if (!event) throw new Response("Event not found", { status: 404 });
@@ -37,11 +37,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     .orderBy(asc(events.name))
     .all();
 
-  return { event, activeEvents, featuredSlug: await featuredEventSlug() };
+  // Which event the public landing page promotes is one setting for the whole
+  // installation, so it is an admin decision, not something an event owner can take.
+  return { event, activeEvents, featuredSlug: await featuredEventSlug(), canFeature: user.role === "admin" };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const eventId = Number(params.eventId);
   const form = await request.formData();
 
@@ -85,7 +87,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   // The featured event is org level, saved from whichever event's settings you are on.
   // A rename regenerates the slug, so carry the setting across when this event is the
   // featured one; otherwise the landing page would fall back to latest-active.
-  const submittedFeatured = String(form.get("featuredEventSlug") ?? "").trim();
+  const submittedFeatured = user.role === "admin" ? String(form.get("featuredEventSlug") ?? "").trim() : "";
   if (submittedFeatured) {
     await setSetting(FEATURED_EVENT_SLUG_KEY, submittedFeatured === current.slug ? slug : submittedFeatured);
   }
@@ -94,7 +96,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function EventSettings({ loaderData, actionData, params }: Route.ComponentProps) {
-  const { event, activeEvents, featuredSlug } = loaderData;
+  const { event, activeEvents, featuredSlug, canFeature } = loaderData;
   // Keep the current choice selectable even when it points at an event that is no
   // longer active, so saving this form does not silently reassign it.
   const featuredOptions = activeEvents.some((option) => option.slug === featuredSlug)
@@ -177,20 +179,34 @@ export default function EventSettings({ loaderData, actionData, params }: Route.
             <Field
               label="Featured event"
               name="featuredEventSlug"
-              help="The event shown on the public landing page and at /sessions, /agenda, and the other short public URLs. Applies across all events."
+              help={
+                canFeature
+                  ? "The event shown on the public landing page and at /sessions, /agenda, and the other short public URLs. Applies across all events."
+                  : "The event shown on the public landing page and at the short public URLs. Applies across all events, so an admin sets it."
+              }
             >
-              <select
-                id="featuredEventSlug"
-                name="featuredEventSlug"
-                defaultValue={featuredSlug}
-                className={selectClass}
-              >
-                {featuredOptions.map((option) => (
-                  <option key={option.slug} value={option.slug}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
+              {canFeature ? (
+                <select
+                  id="featuredEventSlug"
+                  name="featuredEventSlug"
+                  defaultValue={featuredSlug}
+                  className={selectClass}
+                >
+                  {featuredOptions.map((option) => (
+                    <option key={option.slug} value={option.slug}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id="featuredEventSlug"
+                  type="text"
+                  value={featuredOptions.find((option) => option.slug === featuredSlug)?.name ?? featuredSlug}
+                  readOnly
+                  className={`${inputClass} bg-slate-50 text-slate-500`}
+                />
+              )}
             </Field>
 
             <Field label="Public slug" name="slug" help="Used in public CFP, portal, and embed URLs. Follows the event name.">

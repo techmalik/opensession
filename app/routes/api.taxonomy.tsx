@@ -6,11 +6,10 @@
 import type { Route } from "./+types/api.taxonomy";
 import { asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../lib/db.server";
-import { apiError, corsPreflight, isResponse, json, paginate, readPage, requireToken } from "../lib/api.server";
+import { apiError, corsPreflight, isResponse, json, paginate, readPage, requireToken, tokenEvent } from "../lib/api.server";
 import {
   contacts,
   eventContacts,
-  events,
   formats,
   rooms,
   sessionParticipants,
@@ -26,7 +25,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const eventId = Number(params.eventId);
   const db = getDb();
-  const event = await db.select({ id: events.id }).from(events).where(eq(events.id, eventId)).get();
+  const event = await tokenEvent(auth, eventId);
   if (!event) return apiError(404, "not_found", `No event with id ${eventId}.`);
 
   const url = new URL(request.url);

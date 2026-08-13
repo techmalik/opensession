@@ -5,7 +5,7 @@
 import { Form, Link, useSearchParams } from "react-router";
 import type { Route } from "./+types/crm.email";
 import { requireOrganizer } from "../lib/session.server";
-import { contactsByIds } from "../lib/crm.server";
+import { contactsByIds, crmViewer } from "../lib/crm.server";
 import { listEventsForPicker } from "../lib/crm.server";
 import { Breadcrumbs, Card, ErrorNotice, Field, Notice, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass, textareaClass } from "../components/ui";
 
@@ -25,14 +25,15 @@ const DEFAULT_BODY =
   "<p>Hi {first_name},</p><p>We are putting the programme together and would like you to submit a talk.</p><p>{portal_url}</p>";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const { mergeVars, MERGE_TAGS } = await import("../lib/comms.server");
-  const { renderTemplate } = await import("../lib/email");
+  const { renderTemplate, renderTemplateHtml } = await import("../lib/email");
 
   const url = new URL(request.url);
   const ids = idsFrom(url);
-  const recipients = ids.length > 0 ? await contactsByIds(ids) : [];
-  const events = await listEventsForPicker();
+  const recipients = ids.length > 0 ? await contactsByIds(viewer, ids) : [];
+  const events = await listEventsForPicker(viewer);
 
   // The preview is rendered here, not in the component: merge-tag resolution is
   // server code and must not reach the client bundle.
@@ -53,7 +54,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? {
           name: first.name,
           subject: renderTemplate(DEFAULT_SUBJECT, vars),
-          body: renderTemplate(DEFAULT_BODY, vars).replace(/<[^>]+>/g, " ").trim(),
+          body: renderTemplateHtml(DEFAULT_BODY, vars).replace(/<[^>]+>/g, " ").trim(),
         }
       : null,
     mergeTags: MERGE_TAGS.slice(0, 4).map((tag) => tag.tag),
@@ -61,7 +62,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const form = await request.formData();
   const ids = form.getAll("ids").map(Number).filter(Number.isInteger);
   const subject = String(form.get("subject") ?? "").trim();
@@ -72,11 +74,13 @@ export async function action({ request }: Route.ActionArgs) {
   if (!subject || !body) return { error: "Enter a subject and a body.", notice: null };
 
   const { queueBulk } = await import("../lib/comms.server");
-  const events = await listEventsForPicker();
+  const events = await listEventsForPicker(viewer);
   const event = events.find((row) => row.id === eventId) ?? events[0];
   if (!event) return { error: "Create an event first: outreach is sent in the name of one.", notice: null };
 
-  const recipients = await contactsByIds(ids);
+  // Only people this organizer can already see: a posted id list is not a grant.
+  const recipients = await contactsByIds(viewer, ids);
+  if (recipients.length === 0) return { error: "Nobody selected.", notice: null };
   const queued = await queueBulk({
     event: { id: event.id, name: event.name },
     templateKey: "crm_outreach",

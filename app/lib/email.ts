@@ -161,6 +161,27 @@ export function renderTemplate(body: string, vars: Record<string, string>): stri
   return withBlocks.replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? `{${k}}`);
 }
 
+/** The merge values that are deliberately HTML, built by this app rather than typed
+ *  by anyone: the portal button and the outstanding-items list. Everything else is
+ *  somebody's name, title, or free text and is escaped before it lands in a body. */
+export const HTML_MERGE_VARS: readonly string[] = ["portal_button", "task_list"];
+
+/** renderTemplate for an HTML body. Same substitution, but every value outside the
+ *  allowlist is escaped first, so a session title containing markup arrives as text
+ *  in the co-speaker's inbox instead of as a link somebody else wrote.
+ *
+ *  Subjects keep renderTemplate: they are plain text, and escaping there would put
+ *  "&amp;" in the inbox. */
+export function renderTemplateHtml(body: string, vars: Record<string, string>): string {
+  const safe: Record<string, string> = {};
+  for (const [key, value] of Object.entries(vars)) {
+    // Line breaks survive as <br>, which is what free-text fields (decline feedback)
+    // looked like before this escaping existed.
+    safe[key] = HTML_MERGE_VARS.includes(key) ? value : escapeHtml(value).replace(/\r\n|\r|\n/g, "<br>");
+  }
+  return renderTemplate(body, safe);
+}
+
 export const MERGE_TAG_HELP =
   "Merge tags: {speaker_name}, {first_name}, {event_name}, {talk_title}, {portal_url}, {task_list}.";
 

@@ -6,7 +6,7 @@ import { Form, Link } from "react-router";
 import type { Route } from "./+types/event.integrations";
 import { eq } from "drizzle-orm";
 import { bindings, getDb } from "../lib/db.server";
-import { requireOrganizer } from "../lib/session.server";
+import { requireAdmin, requireOrganizer } from "../lib/session.server";
 import {
   airtableBaseUrl,
   airtableConfigured,
@@ -24,8 +24,10 @@ import {
   accelState,
   pushToAccelevents,
   saveAccelConfig,
+  ACCEL_BASE_REJECTED,
   ACCEL_DEFAULT_BASE,
   ACCEL_FIELD_MAP,
+  normalizeAccelBaseUrl,
 } from "../lib/accelevents.server";
 import { formatDateTime } from "../lib/format";
 import { events } from "../../database/schema";
@@ -47,7 +49,11 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  // Reading the state is an organizer's business: they need to know whether the
+  // programme is being mirrored anywhere. Changing it is not, because these
+  // credentials and destinations belong to the whole installation.
+  const user = await requireOrganizer(request);
+  const canManage = user.role === "admin";
   const eventId = Number(params.eventId);
   const db = getDb();
 
@@ -60,10 +66,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const configured = airtableConfigured(bindings);
   const accel = await accelState();
-  const dryRun = new URL(request.url).searchParams.get("dryrun") === "1" ? await accelDryRun(bindings.DB, eventId) : null;
+  const dryRun =
+    canManage && new URL(request.url).searchParams.get("dryrun") === "1"
+      ? await accelDryRun(bindings.DB, eventId)
+      : null;
 
   return {
     event,
+    canManage,
     airtable: {
       configured,
       baseUrl: airtableBaseUrl(bindings),
@@ -85,7 +95,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  // Every intent below writes installation-wide state: an API key, a sync mapping,
+  // a push destination. Admins only, whichever event's settings you came in from.
+  await requireAdmin(request);
   const eventId = Number(params.eventId);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
@@ -124,9 +136,11 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (intent === "accel-save") {
     const apiKey = String(form.get("apiKey") ?? "").trim();
+    const baseUrl = normalizeAccelBaseUrl(String(form.get("baseUrl") ?? ""));
+    if (!baseUrl) return { error: ACCEL_BASE_REJECTED, notice: null };
     const config: Record<string, unknown> = {
       eventId: String(form.get("accelEventId") ?? "").trim(),
-      baseUrl: String(form.get("baseUrl") ?? "").trim() || ACCEL_DEFAULT_BASE,
+      baseUrl,
       enabled: form.get("enabled") === "on",
     };
     // An empty key field means "leave the stored key alone", so saving the toggle
@@ -155,7 +169,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function Integrations({ loaderData, actionData, params }: Route.ComponentProps) {
-  const { event, airtable, accel } = loaderData;
+  const { event, airtable, accel, canManage } = loaderData;
   const base = `/admin/${params.eventId}`;
 
   return (
@@ -173,6 +187,13 @@ export default function Integrations({ loaderData, actionData, params }: Route.C
 
       {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
       {actionData?.notice ? <Notice>{actionData.notice}</Notice> : null}
+
+      {canManage ? null : (
+        <p className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-500">
+          These connections belong to the whole installation, not to one event. Admin only. You can see their current
+          state here.
+        </p>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">
         <Card className="p-4">
@@ -254,23 +275,25 @@ export default function Integrations({ loaderData, actionData, params }: Route.C
                 </table>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Form method="post">
-                  <button type="submit" name="intent" value="airtable-sync" className={buttonPrimary}>
-                    Sync now
-                  </button>
-                </Form>
-                <Form method="post">
-                  <button type="submit" name="intent" value="airtable-schema" className={buttonSecondary}>
-                    Create mirror tables
-                  </button>
-                </Form>
-                <Form method="post">
-                  <button type="submit" name="intent" value="airtable-reset" className={buttonSecondary}>
-                    Clear record mapping
-                  </button>
-                </Form>
-              </div>
+              {canManage ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Form method="post">
+                    <button type="submit" name="intent" value="airtable-sync" className={buttonPrimary}>
+                      Sync now
+                    </button>
+                  </Form>
+                  <Form method="post">
+                    <button type="submit" name="intent" value="airtable-schema" className={buttonSecondary}>
+                      Create mirror tables
+                    </button>
+                  </Form>
+                  <Form method="post">
+                    <button type="submit" name="intent" value="airtable-reset" className={buttonSecondary}>
+                      Clear record mapping
+                    </button>
+                  </Form>
+                </div>
+              ) : null}
               <p className="mt-2 text-[13px] text-slate-500">
                 The cron syncs hourly. Tables: {airtable.tables.join(", ")}, each with a Local ID column that must not be
                 deleted.
@@ -285,33 +308,50 @@ export default function Integrations({ loaderData, actionData, params }: Route.C
             One-way push of the published programme to an Accelevents event. Best effort: dry run first, and read the log.
           </p>
 
-          <Form method="post" className="mt-3 space-y-3">
-            <input type="hidden" name="intent" value="accel-save" />
-            <Field label="API key" name="apiKey" help={accel.config.apiKey ? "A key is stored. Leave blank to keep it." : "From the Accelevents dashboard, under API access."}>
-              <input id="apiKey" name="apiKey" type="password" autoComplete="off" placeholder={accel.config.apiKey ? "Stored" : ""} className={inputClass} />
-            </Field>
-            <Field label="Accelevents event id" name="accelEventId">
-              <input id="accelEventId" name="accelEventId" defaultValue={accel.config.eventId} className={inputClass} />
-            </Field>
-            <Field label="API base URL" name="baseUrl" help="Change only if your account uses a different host.">
-              <input id="baseUrl" name="baseUrl" defaultValue={accel.config.baseUrl || accel.defaultBase} className={inputClass} />
-            </Field>
-            <label className="flex items-center gap-2 text-sm text-slate-900">
-              <input type="checkbox" name="enabled" defaultChecked={accel.config.enabled} className="accent-accent" />
-              Push hourly
-            </label>
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="submit" className={buttonPrimary}>
-                Save
-              </button>
-              <Link to="?dryrun=1" className={buttonSecondary}>
-                Dry run
-              </Link>
-              <button type="submit" name="intent" value="accel-push" className={buttonSecondary} formNoValidate>
-                Push now
-              </button>
-            </div>
-          </Form>
+          {canManage ? (
+            <Form method="post" className="mt-3 space-y-3">
+              <input type="hidden" name="intent" value="accel-save" />
+              <Field label="API key" name="apiKey" help={accel.config.apiKey ? "A key is stored. Leave blank to keep it." : "From the Accelevents dashboard, under API access."}>
+                <input id="apiKey" name="apiKey" type="password" autoComplete="off" placeholder={accel.config.apiKey ? "Stored" : ""} className={inputClass} />
+              </Field>
+              <Field label="Accelevents event id" name="accelEventId">
+                <input id="accelEventId" name="accelEventId" defaultValue={accel.config.eventId} className={inputClass} />
+              </Field>
+              <Field label="API base URL" name="baseUrl" help={`Must be on ${accel.defaultBase.replace(/\/api.*$/, "")}. Change only the path your account uses.`}>
+                <input id="baseUrl" name="baseUrl" defaultValue={accel.config.baseUrl || accel.defaultBase} className={inputClass} />
+              </Field>
+              <label className="flex items-center gap-2 text-sm text-slate-900">
+                <input type="checkbox" name="enabled" defaultChecked={accel.config.enabled} className="accent-accent" />
+                Push hourly
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="submit" className={buttonPrimary}>
+                  Save
+                </button>
+                <Link to="?dryrun=1" className={buttonSecondary}>
+                  Dry run
+                </Link>
+                <button type="submit" name="intent" value="accel-push" className={buttonSecondary} formNoValidate>
+                  Push now
+                </button>
+              </div>
+            </Form>
+          ) : (
+            <dl className="mt-3 space-y-1.5 text-[13px]">
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-500">Status</dt>
+                <dd className="text-slate-900">{accel.configured ? "Connected" : "Not connected"}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-500">Hourly push</dt>
+                <dd className="text-slate-900">{accel.config.enabled ? "On" : "Off"}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-500">API base URL</dt>
+                <dd className="font-mono text-xs text-slate-900">{accel.config.baseUrl || accel.defaultBase}</dd>
+              </div>
+            </dl>
+          )}
 
           {accel.dryRun ? (
             <div className="mt-4 border-t border-slate-100 pt-3">

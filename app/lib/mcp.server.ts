@@ -11,7 +11,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "./db.server";
 import { hashToken } from "./api.server";
-import { scopeForToken } from "./mcp-scope.server";
+import { scopeForToken } from "./token-scope.server";
 import { ToolError, TOOLS, TOOLS_BY_NAME, type McpContext } from "./mcp-tools.server";
 import { apiTokens } from "../../database/schema";
 
@@ -126,9 +126,14 @@ async function callTool(params: Record<string, unknown>, context: McpContext) {
     };
   } catch (error) {
     // A tool that fails for a reason the agent can fix comes back as tool content,
-    // not a transport error, so the agent can read it and try again.
-    const message = error instanceof ToolError ? error.message : `${name} failed: ${(error as Error).message}`;
-    return { content: [{ type: "text", text: message }], isError: true };
+    // not a transport error, so the agent can read it and try again. Anything else
+    // is ours: the detail goes to the logs, and the client gets a fixed sentence.
+    // A D1 error text names tables and constraints, which is a map for the next try.
+    if (error instanceof ToolError) {
+      return { content: [{ type: "text", text: error.message }], isError: true };
+    }
+    console.error(`mcp tool ${name} failed`, error);
+    return { content: [{ type: "text", text: `${name} failed. The server logged the details.` }], isError: true };
   }
 }
 
@@ -176,15 +181,65 @@ async function handleMessage(message: RpcMessage, context: McpContext) {
     return await dispatch(message, context);
   } catch (error) {
     if (error instanceof RpcFailure) return rpcError(message.id ?? null, error.code, error.message);
-    return rpcError(message.id ?? null, RPC_INTERNAL_ERROR, (error as Error).message);
+    console.error(`mcp ${message.method} failed`, error);
+    return rpcError(message.id ?? null, RPC_INTERNAL_ERROR, "Internal error. The server logged the details.");
   }
+}
+
+/** A JSON-RPC message this server will look at. Anything larger is refused before a
+ *  byte is buffered: parsing is the expensive part, and an endpoint that parses
+ *  first is an endpoint anyone can make work. */
+const MAX_BODY_BYTES = 1024 * 1024;
+
+/** Reads the body with a hard ceiling, streaming so an oversized request is dropped
+ *  rather than held. Null means "too large". */
+async function readCappedBody(request: Request): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length") ?? "");
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return null;
+  if (!request.body) return "";
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const joined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    joined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(joined);
 }
 
 /** POST /mcp. Everything the transport does starts here. */
 export async function handleMcpPost(request: Request): Promise<Response> {
+  // Authenticate before the body is read, not after it is parsed. Otherwise an
+  // unauthenticated client can spend this Worker's memory and CPU on JSON it was
+  // never going to be allowed to send.
+  const context = await authenticate(request);
+  if (typeof context === "string") {
+    return jsonResponse(rpcError(null, RPC_UNAUTHORIZED, context), 401);
+  }
+
+  const text = await readCappedBody(request);
+  if (text === null) {
+    return jsonResponse(rpcError(null, RPC_INVALID_REQUEST, "That request body is larger than 1 MB."), 413);
+  }
+
   let payload: unknown;
   try {
-    payload = JSON.parse(await request.text());
+    payload = JSON.parse(text);
   } catch {
     return jsonResponse(rpcError(null, RPC_PARSE_ERROR, "The request body is not valid JSON."), 400);
   }
@@ -197,12 +252,6 @@ export async function handleMcpPost(request: Request): Promise<Response> {
   // Notifications carry no id and expect no body back.
   const answerable = batch.filter((message) => message?.id !== undefined && message?.id !== null);
   if (answerable.length === 0) return new Response(null, { status: 202 });
-
-  const context = await authenticate(request);
-  if (typeof context === "string") {
-    const failures = answerable.map((message) => rpcError(message.id ?? null, RPC_UNAUTHORIZED, context));
-    return jsonResponse(failures.length === 1 ? failures[0] : failures, 401);
-  }
 
   const results = [];
   for (const message of answerable) results.push(await handleMessage(message, context));

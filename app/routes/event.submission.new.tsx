@@ -2,7 +2,7 @@
 // promise still gets a row in the pipeline.
 
 import { Form, Link, redirect } from "react-router";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Route } from "./+types/event.submission.new";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
@@ -38,7 +38,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const eventId = Number(params.eventId);
   const db = getDb();
   const form = await request.formData();
@@ -54,16 +54,35 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (Object.keys(errors).length > 0) return { errors };
 
   const abstract = String(form.get("abstract") ?? "").trim();
-  const trackId = Number(form.get("trackId") ?? 0) || null;
-  const formatId = Number(form.get("formatId") ?? 0) || null;
-  const levelId = Number(form.get("levelId") ?? 0) || null;
-  const statusId = Number(form.get("statusId") ?? 0) || null;
+
+  // Every id below names a row that belongs to some event. Accepting one that
+  // belongs to another event would attach this event's session to a foreign track,
+  // format, level, or status, and every join that reads them together would lie.
+  async function ownedId(
+    table: typeof tracks | typeof formats | typeof levels | typeof statuses,
+    field: string
+  ): Promise<number | null> {
+    const id = Number(form.get(field) ?? 0) || null;
+    if (!id) return null;
+    const row = await db
+      .select({ id: table.id })
+      .from(table)
+      .where(and(eq(table.id, id), eq(table.eventId, eventId)))
+      .get();
+    return row?.id ?? null;
+  }
+
+  const trackId = await ownedId(tracks, "trackId");
+  const formatId = await ownedId(formats, "formatId");
+  const levelId = await ownedId(levels, "levelId");
+  const statusId = await ownedId(statuses, "statusId");
 
   const status = statusId
     ? await db.select({ id: statuses.id, key: statuses.key }).from(statuses).where(eq(statuses.id, statusId)).get()
     : null;
 
   const contactId = await findOrCreateContact({
+    createdBy: user.id,
     email: speakerEmail,
     name: speakerName,
     company: String(form.get("speakerCompany") ?? "").trim() || null,

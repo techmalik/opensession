@@ -4,7 +4,7 @@
 
 import { and, desc, eq } from "drizzle-orm";
 import { appBaseUrl, bindings, getDb } from "./db.server";
-import { queueEmail, renderTemplate, type IcsAttachment } from "./email";
+import { queueEmail, renderTemplate, renderTemplateHtml, type IcsAttachment } from "./email";
 import { emailButton } from "./email-layout";
 import { emailSends, emailTemplates } from "../../database/schema";
 
@@ -158,7 +158,7 @@ export async function queueBulk(input: {
       toContactId: recipient.person.contactId,
       toName: recipient.person.name,
       subject: renderTemplate(input.subject, vars),
-      bodyHtml: renderTemplate(input.body, vars),
+      bodyHtml: renderTemplateHtml(input.body, vars),
       ics: recipient.ics,
     });
     queued += 1;

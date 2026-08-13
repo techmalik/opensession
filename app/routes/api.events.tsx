@@ -1,40 +1,28 @@
-// GET /api/v1/events: every event this installation runs.
+// GET /api/v1/events: every event this token's owner can open.
 
 import type { Route } from "./+types/api.events";
-import { desc } from "drizzle-orm";
-import { getDb } from "../lib/db.server";
-import { apiError, corsPreflight, isResponse, json, paginate, readPage, requireToken } from "../lib/api.server";
-import { events } from "../../database/schema";
+import { apiError, corsPreflight, isResponse, json, paginate, readPage, requireToken, tokenEvents } from "../lib/api.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   if (request.method === "OPTIONS") return corsPreflight();
   const auth = await requireToken(request);
   if (isResponse(auth)) return auth;
 
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: events.id,
-      name: events.name,
-      slug: events.slug,
-      tagline: events.tagline,
-      location: events.location,
-      timezone: events.timezone,
-      startsAt: events.startsAt,
-      endsAt: events.endsAt,
-      status: events.status,
-    })
-    .from(events)
-    .orderBy(desc(events.createdAt))
-    .all();
+  const rows = await tokenEvents(auth);
 
   const url = new URL(request.url);
   return json(
     paginate(
       rows.map((row) => ({
-        ...row,
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        tagline: row.tagline,
+        location: row.location,
+        timezone: row.timezone,
         startsAt: row.startsAt?.toISOString() ?? null,
         endsAt: row.endsAt?.toISOString() ?? null,
+        status: row.status,
       })),
       readPage(url)
     )

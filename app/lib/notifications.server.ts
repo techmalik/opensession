@@ -474,27 +474,11 @@ export async function sendTaskReminders(eventId: number, now = new Date()): Prom
   const subject = stored.subject || TASK_REMINDER_TEMPLATE.subject;
   const body = stored.body || TASK_REMINDER_TEMPLATE.body;
 
-  const queued = await queueBulk({
-    event: { id: event.id, name: event.name },
-    templateKey: "task_reminder",
-    subject,
-    body,
-    recipients: targets.map((target) => ({
-      person: target,
-      extras: {
-        task_list: `<ul>${target.items
-          .map(
-            (item) =>
-              `<li>${escapeHtml(item.title)}, ${item.overdue ? "was due" : "due"} ${escapeHtml(
-                formatDate(item.dueAt, event.timezone) || ""
-              )}${item.overdue ? " (overdue)" : ""}</li>`
-          )
-          .join("")}</ul>`,
-        due_count: String(target.items.length),
-      },
-    })),
-  });
-
+  // One recipient at a time, dedupe row first. Writing every email and then every
+  // dedupe row leaves a window: an isolate that dies between the two, or an
+  // overlapping cron tick, sends the whole batch again. Claiming first means the
+  // worst case is one reminder skipped for a day, not one sent twice.
+  let queued = 0;
   for (const target of targets) {
     for (const item of target.items) {
       await db
@@ -505,6 +489,29 @@ export async function sendTaskReminders(eventId: number, now = new Date()): Prom
           set: { lastRemindedAt: now, eventId },
         });
     }
+
+    queued += await queueBulk({
+      event: { id: event.id, name: event.name },
+      templateKey: "task_reminder",
+      subject,
+      body,
+      recipients: [
+        {
+          person: target,
+          extras: {
+            task_list: `<ul>${target.items
+              .map(
+                (item) =>
+                  `<li>${escapeHtml(item.title)}, ${item.overdue ? "was due" : "due"} ${escapeHtml(
+                    formatDate(item.dueAt, event.timezone) || ""
+                  )}${item.overdue ? " (overdue)" : ""}</li>`
+              )
+              .join("")}</ul>`,
+            due_count: String(target.items.length),
+          },
+        },
+      ],
+    });
   }
 
   return queued;

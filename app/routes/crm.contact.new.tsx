@@ -19,7 +19,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const form = await request.formData();
   const db = getDb();
 
@@ -42,6 +42,8 @@ export async function action({ request }: Route.ActionArgs) {
       title: String(form.get("title") ?? "").trim() || null,
       company: String(form.get("company") ?? "").trim() || null,
       bio: String(form.get("bio") ?? "").trim() || null,
+      // Who entered it. A contact with no event yet is visible to its author.
+      createdBy: user.id,
       createdAt: now,
       updatedAt: now,
     })

@@ -55,6 +55,7 @@ export function zipResponse(filename: string, data: Uint8Array): Response {
     headers: {
       "Content-Type": "application/zip",
       "Content-Disposition": `attachment; filename="${filename}"`,
+      "X-Content-Type-Options": "nosniff",
       "Cache-Control": "private, max-age=0",
     },
   });

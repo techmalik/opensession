@@ -164,7 +164,8 @@ export default function ApiDocs({ loaderData }: Route.ComponentProps) {
           <h2 className="text-base font-semibold text-slate-900">Getting a token</h2>
           <p className="mt-1 text-base leading-relaxed text-slate-900">
             Create one in an event's admin under Settings, API. The token is shown once, at creation. Only its hash is
-            stored, so it cannot be recovered later, only revoked and replaced.
+            stored, so it cannot be recovered later, only revoked and replaced. A token reaches exactly the events the
+            person who created it can open, on this API and over MCP alike.
           </p>
           <Block>{`export TOKEN=osk_...\ncurl -H "x-access-token: $TOKEN" "${baseUrl}/api/v1/events"`}</Block>
         </section>

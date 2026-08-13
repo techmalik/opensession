@@ -59,6 +59,10 @@ export const contacts = sqliteTable(
     tagsJson: text("tags_json").notNull().default("[]"), // CRM tags, string[]
     rating: integer("rating"), // CRM 1..5
     customJson: text("custom_json").notNull().default("{}"),
+    // The user who entered or imported this record. Half of the CRM visibility rule:
+    // an organizer sees the people their own events have touched, plus their own
+    // entries. Null on rows that predate the column.
+    createdBy: integer("created_by"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   },
@@ -594,6 +598,9 @@ export const jobs = sqliteTable(
     attempts: integer("attempts").notNull().default(0),
     status: text("status", { enum: ["pending", "running", "done", "failed"] }).notNull().default("pending"),
     lastError: text("last_error"),
+    // When the current claim expires. A job left "running" past this (an isolate that
+    // died mid-handler) is reclaimed by the next tick instead of stalling forever.
+    leaseUntil: integer("lease_until", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   },
   (t) => [index("jobs_status_idx").on(t.status, t.runAfter)]

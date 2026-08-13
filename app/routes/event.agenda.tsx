@@ -11,7 +11,7 @@ import { requireOrganizer } from "../lib/session.server";
 import { loadAgenda, notifySchedule, placeSession, placementDefaults, unplaceSession } from "../lib/agenda.server";
 import { slotLabel, slotOffsets, slotTimeValue, AGENDA_START_HOUR, SLOT_MINUTES } from "../lib/agenda-grid";
 import { formatDayLabel, formatTimeOfDay, toZonedDateValue, zonedParts } from "../lib/format";
-import { events, sessions } from "../../database/schema";
+import { events, rooms, sessions } from "../../database/schema";
 import {
   Card,
   EmptyState,
@@ -87,15 +87,33 @@ export async function action({ request, params }: Route.ActionArgs) {
     .get();
   if (!event) throw new Response("Event not found", { status: 404 });
 
+  // Both ids on a placement come from the page and are both user input. A session
+  // or a room from another event would put a foreign row on this agenda and give the
+  // conflict engine two events' worth of bookings to reason about.
+  const ownedSession = (sessionId: number) =>
+    db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.eventId, eventId)))
+      .get();
+
   if (intent === "place") {
-    const sessionId = Number(form.get("sessionId") ?? 0);
-    const roomId = Number(form.get("roomId") ?? 0) || null;
+    const roomIdRaw = Number(form.get("roomId") ?? 0) || null;
     const day = String(form.get("day") ?? "");
     const time = String(form.get("time") ?? "");
     const durationMin = Number(form.get("durationMin") ?? 30) || 30;
-    if (!sessionId || !roomId || !day || !time) return { error: "Pick a session, a room, a day, and a time.", notice: null };
+    const session = await ownedSession(Number(form.get("sessionId") ?? 0));
+    if (!session || !roomIdRaw || !day || !time) return { error: "Pick a session, a room, a day, and a time.", notice: null };
 
-    const placed = await placeSession(eventId, sessionId, { roomId, day, time, durationMin }, event.timezone);
+    const room = await db
+      .select({ id: rooms.id })
+      .from(rooms)
+      .where(and(eq(rooms.id, roomIdRaw), eq(rooms.eventId, eventId)))
+      .get();
+    if (!room) return { error: "That room does not belong to this event.", notice: null };
+
+    const sessionId = session.id;
+    const placed = await placeSession(eventId, sessionId, { roomId: room.id, day, time, durationMin }, event.timezone);
     if (!placed) return { error: "That day or time could not be read.", notice: null };
 
     const notify = String(form.get("notify") ?? "") === "1";
@@ -107,19 +125,21 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "unplace") {
-    const sessionId = Number(form.get("sessionId") ?? 0);
-    await unplaceSession(eventId, sessionId);
+    const session = await ownedSession(Number(form.get("sessionId") ?? 0));
+    if (!session) throw new Response("Session not found", { status: 404 });
+    await unplaceSession(eventId, session.id);
     return { error: null, notice: "Session moved back to the unscheduled list." };
   }
 
   // CNT-12: hold a placed session back from every public surface, or let it out
   // again, without unscheduling it.
   if (intent === "hold-public" || intent === "publish-public") {
-    const sessionId = Number(form.get("sessionId") ?? 0);
+    const session = await ownedSession(Number(form.get("sessionId") ?? 0));
+    if (!session) throw new Response("Session not found", { status: 404 });
     await db
       .update(sessions)
       .set({ publicState: intent === "hold-public" ? "held" : "published", updatedAt: new Date() })
-      .where(and(eq(sessions.id, sessionId), eq(sessions.eventId, eventId)));
+      .where(eq(sessions.id, session.id));
     return {
       error: null,
       notice: intent === "hold-public" ? "Held from public." : "Published to public.",

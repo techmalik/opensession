@@ -1,11 +1,11 @@
-// Which events an MCP token may touch.
+// Which events an API token may touch.
 //
-// The public API is deliberately installation-wide: its own screen says so, and its
-// handlers are untouched. The MCP server is stricter. A token created after the
-// created_by column shipped carries its organizer, and every tool is filtered
-// through the same canAccessEvent / eventAccessFilter rules the admin uses. A token
-// with no recorded creator keeps the API's reach, so nothing that worked before
-// this module existed stopped working.
+// One rule for both token surfaces, REST and MCP: a token reaches exactly the events
+// the organizer who created it can open, through the same canAccessEvent /
+// eventAccessFilter used by the admin UI. There is no installation-wide tier. A
+// token whose creator was never recorded, or whose creator has since been deleted,
+// reaches nothing: failing closed is the only safe reading of "we do not know who
+// this belongs to".
 
 import { and, eq } from "drizzle-orm";
 import { getDb } from "./db.server";
@@ -15,9 +15,12 @@ import { apiTokens, events, users } from "../../database/schema";
 export interface TokenScope {
   tokenId: number;
   tokenName: string;
-  /** Null means the token predates creator tracking: API-wide reach. */
+  /** Null means the token has no reachable creator, and therefore no reach. */
   user: EventOwner | null;
 }
+
+export const CREATORLESS_TOKEN_MESSAGE =
+  "This token has no recorded owner, so it has no event access. Create a new token in Settings, API and use that one.";
 
 export async function scopeForToken(tokenId: number, tokenName: string): Promise<TokenScope> {
   const db = getDb();
@@ -42,8 +45,9 @@ export type ScopedEventRow = typeof events.$inferSelect;
 
 /** Every event this token reaches, newest first. */
 export async function scopedEvents(scope: TokenScope): Promise<ScopedEventRow[]> {
+  if (!scope.user) return [];
   const db = getDb();
-  const filter = scope.user ? eventAccessFilter(scope.user) : undefined;
+  const filter = eventAccessFilter(scope.user);
   const query = db.select().from(events);
   const rows = filter ? await query.where(filter).all() : await query.all();
   return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -53,10 +57,11 @@ export async function scopedEvents(scope: TokenScope): Promise<ScopedEventRow[]>
  *  cases are answered the same way on purpose: a token must not be able to probe
  *  another organizer's event ids. */
 export async function scopedEvent(scope: TokenScope, eventId: number): Promise<ScopedEventRow | null> {
+  if (!scope.user) return null;
   if (!Number.isInteger(eventId)) return null;
   const db = getDb();
   const row = await db.select().from(events).where(and(eq(events.id, eventId))).get();
   if (!row) return null;
-  if (scope.user && !canAccessEvent(scope.user, row)) return null;
+  if (!canAccessEvent(scope.user, row)) return null;
   return row;
 }

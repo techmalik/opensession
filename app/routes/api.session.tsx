@@ -3,17 +3,37 @@
 import type { Route } from "./+types/api.session";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../lib/db.server";
-import { apiError, corsPreflight, isResponse, json, readJsonBody, requireToken } from "../lib/api.server";
+import { apiError, corsPreflight, isResponse, json, readJsonBody, requireToken, tokenEvent, type AuthedToken } from "../lib/api.server";
 import { loadApiSessions } from "../lib/api-sessions.server";
-import { sessionParticipants, sessions, statuses } from "../../database/schema";
+import { formats, levels, rooms, sessionParticipants, sessions, statuses, tracks } from "../../database/schema";
 
-async function owned(eventId: number, sessionId: number) {
+/** The session, only when it belongs to an event this token can reach. Both "no such
+ *  event" and "not your event" answer the same 404. */
+async function owned(auth: AuthedToken, eventId: number, sessionId: number) {
+  if (!(await tokenEvent(auth, eventId))) return undefined;
   const db = getDb();
   return db
     .select({ id: sessions.id })
     .from(sessions)
     .where(and(eq(sessions.id, sessionId), eq(sessions.eventId, eventId)))
     .get();
+}
+
+/** A taxonomy id is only accepted when its row belongs to this event. */
+async function ownedRef(
+  table: typeof tracks | typeof formats | typeof levels | typeof rooms,
+  eventId: number,
+  raw: unknown
+): Promise<number | null | "invalid"> {
+  const id = Number(raw) || null;
+  if (!id) return null;
+  const db = getDb();
+  const row = await db
+    .select({ id: table.id })
+    .from(table)
+    .where(and(eq(table.id, id), eq(table.eventId, eventId)))
+    .get();
+  return row ? row.id : "invalid";
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -23,7 +43,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const eventId = Number(params.eventId);
   const sessionId = Number(params.sessionId);
-  if (!(await owned(eventId, sessionId))) return apiError(404, "not_found", `No session ${sessionId} on event ${eventId}.`);
+  if (!(await owned(auth, eventId, sessionId))) return apiError(404, "not_found", `No session ${sessionId} on event ${eventId}.`);
 
   const [row] = await loadApiSessions(eventId, [sessionId]);
   return json({ data: row });
@@ -36,7 +56,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const eventId = Number(params.eventId);
   const sessionId = Number(params.sessionId);
-  if (!(await owned(eventId, sessionId))) return apiError(404, "not_found", `No session ${sessionId} on event ${eventId}.`);
+  if (!(await owned(auth, eventId, sessionId))) return apiError(404, "not_found", `No session ${sessionId} on event ${eventId}.`);
 
   const db = getDb();
 
@@ -59,10 +79,19 @@ export async function action({ request, params }: Route.ActionArgs) {
     patch.title = body.title.trim();
   }
   if ("abstract" in body) patch.abstract = body.abstract == null ? null : String(body.abstract);
-  if ("trackId" in body) patch.trackId = Number(body.trackId) || null;
-  if ("formatId" in body) patch.formatId = Number(body.formatId) || null;
-  if ("levelId" in body) patch.levelId = Number(body.levelId) || null;
-  if ("roomId" in body) patch.roomId = Number(body.roomId) || null;
+  for (const [field, table] of [
+    ["trackId", tracks],
+    ["formatId", formats],
+    ["levelId", levels],
+    ["roomId", rooms],
+  ] as const) {
+    if (!(field in body)) continue;
+    const resolved = await ownedRef(table, eventId, body[field]);
+    if (resolved === "invalid") {
+      return apiError(422, "invalid_reference", `${field} does not belong to event ${eventId}.`);
+    }
+    patch[field] = resolved;
+  }
   if ("isDraft" in body) patch.isDraft = body.isDraft === true;
   if ("publicState" in body) {
     const state = String(body.publicState);

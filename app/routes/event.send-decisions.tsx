@@ -9,7 +9,7 @@ import { and, asc, eq, isNull, or } from "drizzle-orm";
 import type { Route } from "./+types/event.send-decisions";
 import { appBaseUrl, bindings, getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
-import { escapeHtml, renderTemplate, sendEmail } from "../lib/email";
+import { renderTemplate, renderTemplateHtml, sendEmail } from "../lib/email";
 import { buildIcs } from "../lib/ics";
 import { contacts, events, sessionParticipants, sessions, statuses } from "../../database/schema";
 import { Breadcrumbs, Card, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, textareaClass } from "../components/ui";
@@ -192,7 +192,8 @@ export async function action({ request, params }: Route.ActionArgs) {
       event_name: event.name,
       status: finalStatus.label,
       portal_url: `${appBaseUrl()}/portal`,
-      feedback: feedbackRaw ? escapeHtml(feedbackRaw).replace(/\n/g, "<br>") : "",
+      // Raw: renderTemplateHtml escapes it and keeps the line breaks.
+      feedback: feedbackRaw,
     };
     const result = await sendEmail(bindings, {
       eventId,
@@ -201,7 +202,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       toContactId: recipient.contactId ?? undefined,
       toName: recipient.speakerName,
       subject: renderTemplate(subject, vars),
-      bodyHtml: renderTemplate(body, vars),
+      bodyHtml: renderTemplateHtml(body, vars),
       ics: ics ? { filename: "event.ics", content: ics } : undefined,
     });
 

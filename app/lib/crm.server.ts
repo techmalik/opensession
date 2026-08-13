@@ -7,6 +7,7 @@
 
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "./db.server";
+import { canAccessEvent, eventAccessFilter, type EventOwner } from "./events.server";
 import { CRM_STAGES, type CrmStage } from "./crm-view";
 import {
   contacts,
@@ -25,6 +26,65 @@ import {
 } from "../../database/schema";
 
 export type { CrmStage } from "./crm-view";
+
+// ---------- Who sees which contacts ----------
+//
+// The CRM sits above events, but it is not public to every organizer: signup hands
+// out the organizer role to anyone who asks, and the directory holds names, email
+// addresses, employers, and private notes. So an organizer sees the people their own
+// events have touched, plus the records they created themselves; an admin sees all
+// of it. Nothing here is gated on the admin role, because running the CRM is exactly
+// what an event organizer is here to do.
+
+export interface CrmViewer {
+  user: EventOwner;
+  /** Null means unrestricted, which only ever happens for an admin. */
+  visible: Set<number> | null;
+  eventIds: Set<number> | null;
+}
+
+/** Resolves what this user can see, once per request. */
+export async function crmViewer(user: EventOwner): Promise<CrmViewer> {
+  if (user.role === "admin") return { user, visible: null, eventIds: null };
+
+  const db = getDb();
+  const filter = eventAccessFilter(user);
+  const base = db.select({ id: events.id }).from(events);
+  const eventRows = filter ? await base.where(filter).all() : await base.all();
+  const eventIds = eventRows.map((row) => row.id);
+
+  const visible = new Set<number>();
+  if (eventIds.length > 0) {
+    const roster = await db
+      .select({ contactId: eventContacts.contactId })
+      .from(eventContacts)
+      .where(inArray(eventContacts.eventId, eventIds))
+      .all();
+    for (const row of roster) visible.add(row.contactId);
+
+    const onSessions = await db
+      .select({ contactId: sessionParticipants.contactId })
+      .from(sessionParticipants)
+      .innerJoin(sessions, eq(sessionParticipants.sessionId, sessions.id))
+      .where(inArray(sessions.eventId, eventIds))
+      .all();
+    for (const row of onSessions) visible.add(row.contactId);
+  }
+
+  // Contacts this organizer entered or imported, which may not sit on any event yet.
+  const mine = await db.select({ id: contacts.id }).from(contacts).where(eq(contacts.createdBy, user.id)).all();
+  for (const row of mine) visible.add(row.id);
+
+  return { user, visible, eventIds: new Set(eventIds) };
+}
+
+export function canSeeContact(viewer: CrmViewer, contactId: number): boolean {
+  return viewer.visible === null || viewer.visible.has(contactId);
+}
+
+export function canSeeEvent(viewer: CrmViewer, eventId: number): boolean {
+  return viewer.eventIds === null || viewer.eventIds.has(eventId);
+}
 
 export interface CrmContactRow {
   id: number;
@@ -68,12 +128,12 @@ export interface CrmFilters {
   hasEvent?: string;
 }
 
-/** Every contact in the organization, with the cross-event counts the directory
- *  and the dashboard both read. */
-export async function listContacts(filters: CrmFilters = {}): Promise<CrmContactRow[]> {
+/** Every contact this viewer may see, with the cross-event counts the directory and
+ *  the dashboard both read. */
+export async function listContacts(viewer: CrmViewer, filters: CrmFilters = {}): Promise<CrmContactRow[]> {
   const db = getDb();
 
-  const rows = await db
+  const all = await db
     .select({
       id: contacts.id,
       firstName: contacts.firstName,
@@ -89,6 +149,7 @@ export async function listContacts(filters: CrmFilters = {}): Promise<CrmContact
     .from(contacts)
     .orderBy(asc(contacts.lastName), asc(contacts.firstName), asc(contacts.id))
     .all();
+  const rows = viewer.visible === null ? all : all.filter((row) => viewer.visible!.has(row.id));
 
   const links = await db.select({ contactId: eventContacts.contactId, eventId: eventContacts.eventId }).from(eventContacts).all();
   const participants = await db
@@ -138,7 +199,7 @@ export async function listContacts(filters: CrmFilters = {}): Promise<CrmContact
   });
 
   if (filters.segmentId) {
-    const segment = await getSegment(filters.segmentId);
+    const segment = await getSegment(viewer, filters.segmentId);
     if (segment) {
       if (segment.kind === "curated") {
         const members = new Set(segment.memberIds);
@@ -174,8 +235,8 @@ function applyAttributeFilters(rows: CrmContactRow[], filters: CrmFilters): CrmC
 }
 
 /** Distinct values behind the directory's filter dropdowns. */
-export async function filterOptions(): Promise<{ companies: string[]; titles: string[]; tags: string[] }> {
-  const rows = await listContacts();
+export async function filterOptions(viewer: CrmViewer): Promise<{ companies: string[]; titles: string[]; tags: string[] }> {
+  const rows = await listContacts(viewer);
   return {
     companies: [...new Set(rows.map((row) => row.company).filter((v): v is string => Boolean(v)))].sort(),
     titles: [...new Set(rows.map((row) => row.title).filter((v): v is string => Boolean(v)))].sort(),
@@ -200,7 +261,8 @@ export interface CrmActivityEntry {
   author: string;
 }
 
-export async function getContact(contactId: number) {
+export async function getContact(viewer: CrmViewer, contactId: number) {
+  if (!canSeeContact(viewer, contactId)) return null;
   const db = getDb();
   const row = await db.select().from(contacts).where(eq(contacts.id, contactId)).get();
   if (!row) return null;
@@ -213,7 +275,7 @@ export async function getContact(contactId: number) {
 }
 
 /** Which events and sessions this person is connected to, across the whole org. */
-export async function contactConnections(contactId: number): Promise<CrmConnection[]> {
+export async function contactConnections(viewer: CrmViewer, contactId: number): Promise<CrmConnection[]> {
   const db = getDb();
 
   const links = await db
@@ -240,6 +302,7 @@ export async function contactConnections(contactId: number): Promise<CrmConnecti
 
   const byEvent = new Map<number, CrmConnection>();
   for (const link of links) {
+    if (viewer.eventIds !== null && !viewer.eventIds.has(link.eventId)) continue;
     byEvent.set(link.eventId, {
       eventId: link.eventId,
       eventName: link.eventName ?? "Event",
@@ -248,6 +311,7 @@ export async function contactConnections(contactId: number): Promise<CrmConnecti
     });
   }
   for (const row of sessionRows) {
+    if (viewer.eventIds !== null && !viewer.eventIds.has(row.eventId)) continue;
     const entry = byEvent.get(row.eventId) ?? {
       eventId: row.eventId,
       eventName: row.eventName ?? "Event",
@@ -261,7 +325,8 @@ export async function contactConnections(contactId: number): Promise<CrmConnecti
 }
 
 /** Notes, mail, stage moves, and event links in one timeline. */
-export async function contactActivity(contactId: number): Promise<CrmActivityEntry[]> {
+export async function contactActivity(viewer: CrmViewer, contactId: number): Promise<CrmActivityEntry[]> {
+  if (!canSeeContact(viewer, contactId)) return [];
   const db = getDb();
   const entries: CrmActivityEntry[] = [];
 
@@ -301,7 +366,8 @@ export async function contactActivity(contactId: number): Promise<CrmActivityEnt
   return entries.sort((a, b) => b.at.getTime() - a.at.getTime());
 }
 
-export async function listNotes(contactId: number) {
+export async function listNotes(viewer: CrmViewer, contactId: number) {
+  if (!canSeeContact(viewer, contactId)) return [];
   const db = getDb();
   return db
     .select()
@@ -311,7 +377,8 @@ export async function listNotes(contactId: number) {
     .all();
 }
 
-export async function addNote(contactId: number, body: string, author: { id: number | null; name: string }) {
+export async function addNote(viewer: CrmViewer, contactId: number, body: string, author: { id: number | null; name: string }) {
+  if (!canSeeContact(viewer, contactId)) return;
   const db = getDb();
   await db.insert(crmNotes).values({
     contactId,
@@ -322,7 +389,8 @@ export async function addNote(contactId: number, body: string, author: { id: num
   });
 }
 
-export async function setTags(contactId: number, tags: string[]) {
+export async function setTags(viewer: CrmViewer, contactId: number, tags: string[]) {
+  if (!canSeeContact(viewer, contactId)) return;
   const db = getDb();
   await db
     .update(contacts)
@@ -330,7 +398,8 @@ export async function setTags(contactId: number, tags: string[]) {
     .where(eq(contacts.id, contactId));
 }
 
-export async function setCustomValues(contactId: number, values: Record<string, string>) {
+export async function setCustomValues(viewer: CrmViewer, contactId: number, values: Record<string, string>) {
+  if (!canSeeContact(viewer, contactId)) return;
   const db = getDb();
   const row = await db.select({ customJson: contacts.customJson }).from(contacts).where(eq(contacts.id, contactId)).get();
   if (!row) return;
@@ -378,14 +447,19 @@ export interface SegmentRow {
   count: number;
 }
 
-export async function listSegments(): Promise<SegmentRow[]> {
+export async function listSegments(viewer: CrmViewer): Promise<SegmentRow[]> {
   const db = getDb();
   const rows = await db.select().from(crmSegments).orderBy(asc(crmSegments.name)).all();
   const members = await db.select().from(crmSegmentMembers).all();
-  const all = await listContacts();
+  const all = await listContacts(viewer);
+  const allIds = new Set(all.map((row) => row.id));
 
   return rows.map((row) => {
-    const memberIds = members.filter((m) => m.segmentId === row.id).map((m) => m.contactId);
+    // A segment is a saved view, not a grant: its membership is intersected with
+    // what the viewer can already see.
+    const memberIds = members
+      .filter((m) => m.segmentId === row.id && allIds.has(m.contactId))
+      .map((m) => m.contactId);
     const filters = parseJson<CrmFilters>(row.filtersJson, {});
     const count =
       row.kind === "curated" ? memberIds.length : applyAttributeFilters(all, filters).length;
@@ -393,8 +467,8 @@ export async function listSegments(): Promise<SegmentRow[]> {
   });
 }
 
-export async function getSegment(id: number): Promise<SegmentRow | null> {
-  const rows = await listSegments();
+export async function getSegment(viewer: CrmViewer, id: number): Promise<SegmentRow | null> {
+  const rows = await listSegments(viewer);
   return rows.find((row) => row.id === id) ?? null;
 }
 
@@ -450,9 +524,9 @@ export interface ProspectCard {
   updatedAt: Date;
 }
 
-export async function listProspects(): Promise<ProspectCard[]> {
+export async function listProspects(viewer: CrmViewer): Promise<ProspectCard[]> {
   const db = getDb();
-  const rows = await db
+  const allRows = await db
     .select({
       id: crmProspects.id,
       contactId: crmProspects.contactId,
@@ -474,6 +548,7 @@ export async function listProspects(): Promise<ProspectCard[]> {
     .leftJoin(events, eq(crmProspects.eventId, events.id))
     .orderBy(asc(crmProspects.sort), asc(crmProspects.id))
     .all();
+  const rows = allRows.filter((row) => canSeeContact(viewer, row.contactId));
 
   const notes = await db.select({ prospectId: crmProspectEvents.prospectId, kind: crmProspectEvents.kind }).from(crmProspectEvents).all();
 
@@ -495,6 +570,7 @@ export async function listProspects(): Promise<ProspectCard[]> {
 }
 
 export async function enrollProspect(input: {
+  viewer: CrmViewer;
   contactId: number;
   stage: CrmStage;
   score: number | null;
@@ -502,6 +578,7 @@ export async function enrollProspect(input: {
   eventId: number | null;
   author: { id: number | null; name: string };
 }): Promise<number> {
+  if (!canSeeContact(input.viewer, input.contactId)) return 0;
   const db = getDb();
   const existing = await db.select({ id: crmProspects.id }).from(crmProspects).where(eq(crmProspects.contactId, input.contactId)).get();
   if (existing) return existing.id;
@@ -534,13 +611,15 @@ export async function enrollProspect(input: {
 }
 
 export async function moveProspect(
+  viewer: CrmViewer,
   prospectId: number,
   stage: CrmStage,
   author: { id: number | null; name: string }
 ): Promise<boolean> {
   const db = getDb();
   const current = await db.select().from(crmProspects).where(eq(crmProspects.id, prospectId)).get();
-  if (!current || current.stage === stage) return false;
+  if (!current || !canSeeContact(viewer, current.contactId)) return false;
+  if (current.stage === stage) return false;
 
   await db.update(crmProspects).set({ stage, updatedAt: new Date() }).where(eq(crmProspects.id, prospectId));
   await db.insert(crmProspectEvents).values({
@@ -555,8 +634,15 @@ export async function moveProspect(
   return true;
 }
 
-export async function addProspectNote(prospectId: number, body: string, author: { id: number | null; name: string }) {
+export async function addProspectNote(
+  viewer: CrmViewer,
+  prospectId: number,
+  body: string,
+  author: { id: number | null; name: string }
+) {
   const db = getDb();
+  const card = await db.select({ contactId: crmProspects.contactId }).from(crmProspects).where(eq(crmProspects.id, prospectId)).get();
+  if (!card || !canSeeContact(viewer, card.contactId)) return;
   await db.insert(crmProspectEvents).values({
     prospectId,
     kind: "note",
@@ -568,9 +654,9 @@ export async function addProspectNote(prospectId: number, body: string, author: 
   await db.update(crmProspects).set({ updatedAt: new Date() }).where(eq(crmProspects.id, prospectId));
 }
 
-export async function prospectDetail(prospectId: number) {
+export async function prospectDetail(viewer: CrmViewer, prospectId: number) {
   const db = getDb();
-  const cards = await listProspects();
+  const cards = await listProspects(viewer);
   const card = cards.find((row) => row.id === prospectId);
   if (!card) return null;
   const history = await db
@@ -582,8 +668,12 @@ export async function prospectDetail(prospectId: number) {
   return { card, history };
 }
 
-export async function removeProspect(prospectId: number) {
+export async function removeProspect(viewer: CrmViewer | null, prospectId: number) {
   const db = getDb();
+  if (viewer) {
+    const card = await db.select({ contactId: crmProspects.contactId }).from(crmProspects).where(eq(crmProspects.id, prospectId)).get();
+    if (!card || !canSeeContact(viewer, card.contactId)) return;
+  }
   await db.delete(crmProspectEvents).where(eq(crmProspectEvents.prospectId, prospectId));
   await db.delete(crmProspects).where(eq(crmProspects.id, prospectId));
 }
@@ -592,10 +682,13 @@ export async function removeProspect(prospectId: number) {
 
 /** Adds contacts to an event's roster. This is the whole point of the CRM: the
  *  event gets the existing record, nobody re-keys a bio. */
-export async function addContactsToEvent(eventId: number, contactIds: number[]): Promise<number> {
+export async function addContactsToEvent(viewer: CrmViewer, eventId: number, contactIds: number[]): Promise<number> {
   const db = getDb();
+  const event = await db.select({ slug: events.slug, createdBy: events.createdBy }).from(events).where(eq(events.id, eventId)).get();
+  if (!event || !canAccessEvent(viewer.user, event)) return 0;
+
   let added = 0;
-  for (const contactId of contactIds) {
+  for (const contactId of contactIds.filter((id) => canSeeContact(viewer, id))) {
     const existing = await db
       .select({ id: eventContacts.id })
       .from(eventContacts)
@@ -616,8 +709,8 @@ export interface MergeCandidate {
 }
 
 /** Same normalized name, different record. */
-export async function duplicateGroups(): Promise<CrmContactRow[][]> {
-  const rows = await listContacts();
+export async function duplicateGroups(viewer: CrmViewer): Promise<CrmContactRow[][]> {
+  const rows = await listContacts(viewer);
   const byName = new Map<string, CrmContactRow[]>();
   for (const row of rows) {
     const key = nameKey(row.firstName, row.lastName);
@@ -630,11 +723,13 @@ export async function duplicateGroups(): Promise<CrmContactRow[][]> {
 /** Moves every reference to the primary, applies the chosen field values, and
  *  deletes the loser. Not reversible, which the UI says out loud. */
 export async function mergeContacts(
+  viewer: CrmViewer,
   primaryId: number,
   duplicateId: number,
   chosen: { firstName: string; lastName: string; email: string; title: string; company: string; bio: string }
 ): Promise<boolean> {
   if (primaryId === duplicateId) return false;
+  if (!canSeeContact(viewer, primaryId) || !canSeeContact(viewer, duplicateId)) return false;
   const db = getDb();
 
   const primary = await db.select().from(contacts).where(eq(contacts.id, primaryId)).get();
@@ -728,10 +823,9 @@ export interface CrmDashboard {
   recentContacts: { id: number; name: string; company: string | null; createdAt: Date }[];
 }
 
-export async function crmDashboard(): Promise<CrmDashboard> {
-  const db = getDb();
-  const rows = await listContacts();
-  const eventRows = await db.select({ id: events.id }).from(events).all();
+export async function crmDashboard(viewer: CrmViewer): Promise<CrmDashboard> {
+  const rows = await listContacts(viewer);
+  const eventRows = await listEventsForPicker(viewer);
 
   const tally = (values: (string | null)[]) => {
     const counts = new Map<string, number>();
@@ -765,37 +859,38 @@ export async function crmDashboard(): Promise<CrmDashboard> {
   };
 }
 
-export async function listEventsForPicker() {
+/** Only events this viewer can actually open, so "push into event" cannot reach
+ *  somebody else's conference. */
+export async function listEventsForPicker(viewer: CrmViewer) {
   const db = getDb();
-  return db
-    .select({ id: events.id, name: events.name, status: events.status })
-    .from(events)
-    .orderBy(desc(events.createdAt))
-    .all();
+  const filter = eventAccessFilter(viewer.user);
+  const query = db.select({ id: events.id, name: events.name, status: events.status }).from(events);
+  return (filter ? query.where(filter) : query).orderBy(desc(events.createdAt)).all();
 }
 
-export async function contactsByIds(ids: number[]): Promise<CrmContactRow[]> {
+export async function contactsByIds(viewer: CrmViewer, ids: number[]): Promise<CrmContactRow[]> {
   if (ids.length === 0) return [];
-  const rows = await listContacts();
+  const rows = await listContacts(viewer);
   return rows.filter((row) => ids.includes(row.id));
 }
 
-export async function deleteContact(contactId: number): Promise<void> {
+export async function deleteContact(viewer: CrmViewer, contactId: number): Promise<void> {
+  if (!canSeeContact(viewer, contactId)) return;
   const db = getDb();
   await db.delete(crmNotes).where(eq(crmNotes.contactId, contactId));
   await db.delete(crmSegmentMembers).where(eq(crmSegmentMembers.contactId, contactId));
   const prospect = await db.select({ id: crmProspects.id }).from(crmProspects).where(eq(crmProspects.contactId, contactId)).get();
-  if (prospect) await removeProspect(prospect.id);
+  if (prospect) await removeProspect(null, prospect.id);
   await db.delete(eventContacts).where(eq(eventContacts.contactId, contactId));
   await db.delete(sessionParticipants).where(eq(sessionParticipants.contactId, contactId));
   await db.delete(contacts).where(eq(contacts.id, contactId));
 }
 
-export async function contactIdsInSegment(segmentId: number): Promise<number[]> {
-  const segment = await getSegment(segmentId);
+export async function contactIdsInSegment(viewer: CrmViewer, segmentId: number): Promise<number[]> {
+  const segment = await getSegment(viewer, segmentId);
   if (!segment) return [];
   if (segment.kind === "curated") return segment.memberIds;
-  const rows = await listContacts({ segmentId });
+  const rows = await listContacts(viewer, { segmentId });
   return rows.map((row) => row.id);
 }
 

@@ -2,14 +2,14 @@
 
 import type { Route } from "./+types/crm.export";
 import { requireOrganizer } from "../lib/session.server";
-import { listContacts } from "../lib/crm.server";
+import { crmViewer, listContacts } from "../lib/crm.server";
 import { csvResponse, toCsv } from "../lib/format";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const url = new URL(request.url);
 
-  const rows = await listContacts({
+  const rows = await listContacts(await crmViewer(user), {
     q: url.searchParams.get("q") ?? "",
     company: url.searchParams.get("company") ?? "",
     title: url.searchParams.get("title") ?? "",

@@ -3,13 +3,13 @@
 // filter), and per-reviewer progress with reminders.
 
 import { Form, Link } from "react-router";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Route } from "./+types/event.plan";
 import { appBaseUrl, bindings, getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { getCriteria, sessionScoreMap } from "../lib/evals.server";
 import { createAccount, generateTempPassword } from "../lib/users.server";
-import { sendEmail } from "../lib/email";
+import { escapeHtml, sendEmail } from "../lib/email";
 import { formatDate, formatScore, fromDateInputValue, toDateInputValue } from "../lib/format";
 import {
   evalAssignments,
@@ -300,7 +300,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       toEmail: email,
       toName: name,
       subject: `You are invited to review for ${event?.name ?? "our event"}`,
-      bodyHtml: `<p>Hi ${name},</p><p>You have been added as an evaluator for ${event?.name ?? "our event"}. Sign in at ${appBaseUrl()}/login to start reviewing.</p>`,
+      bodyHtml: `<p>Hi ${escapeHtml(name)},</p><p>You have been added as an evaluator for ${escapeHtml(event?.name ?? "our event")}. Sign in at ${appBaseUrl()}/login to start reviewing.</p>`,
     });
 
     return {
@@ -370,10 +370,23 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "save-matrix") {
-    const gridSessions = String(form.get("gridSessions") ?? "")
+    const posted = String(form.get("gridSessions") ?? "")
       .split(",")
       .map(Number)
       .filter(Number.isInteger);
+    // The grid posts back its own session ids. Keep only the ones that really are on
+    // this plan's event: an assignment to a foreign session would hand the evaluator
+    // another event's private submission through /review/:assignmentId.
+    const onThisEvent = new Set(
+      (
+        await db
+          .select({ id: sessions.id })
+          .from(sessions)
+          .where(and(eq(sessions.eventId, eventId), inArray(sessions.id, posted.length > 0 ? posted : [0])))
+          .all()
+      ).map((row) => row.id)
+    );
+    const gridSessions = posted.filter((id) => onThisEvent.has(id));
     const pool = await db
       .select({ userId: evalPlanReviewers.userId })
       .from(evalPlanReviewers)
@@ -420,7 +433,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       toEmail: user.email,
       toName: user.name,
       subject: `Reminder: ${pending.length} ${pending.length === 1 ? "review" : "reviews"} waiting in ${plan.name}`,
-      bodyHtml: `<p>Hi ${user.name},</p><p>You have ${pending.length} outstanding ${pending.length === 1 ? "review" : "reviews"} for ${event?.name ?? "our event"} (${plan.name}). Review at ${appBaseUrl()}/review.</p>`,
+      bodyHtml: `<p>Hi ${escapeHtml(user.name)},</p><p>You have ${pending.length} outstanding ${pending.length === 1 ? "review" : "reviews"} for ${escapeHtml(event?.name ?? "our event")} (${escapeHtml(plan.name)}). Review at ${appBaseUrl()}/review.</p>`,
     });
     return { error: null, notice: `Reminder sent to ${user.name} (${pending.length} outstanding).` };
   }

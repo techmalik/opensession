@@ -16,7 +16,7 @@ import {
   saveTemplate,
   MERGE_TAGS,
 } from "../lib/comms.server";
-import { deliverEmail, renderTemplate, sendEmail } from "../lib/email";
+import { deliverEmail, renderTemplate, renderTemplateHtml, sendEmail } from "../lib/email";
 import {
   reminderRecipients,
   digestRecipients,
@@ -192,7 +192,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       templateKey: `test:${String(form.get("templateKey") ?? "custom")}`,
       toEmail,
       subject: `[Test] ${renderTemplate(subject, vars)}`,
-      bodyHtml: renderTemplate(body, vars),
+      bodyHtml: renderTemplateHtml(body, vars),
     });
 
     return {
@@ -207,8 +207,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   // The cron runs these on its own schedule. The buttons exist so the flow can be
   // proved now, and so an organizer can force a send after fixing a template.
   if (intent === "run-reminders") {
-    const formId = Number(form.get("formId") ?? 0);
-    const queued = await sendFormReminders(formId, 0);
+    // The form id comes from the page's own picker, but it is still user input: a
+    // foreign id here would mail that event's speakers from this screen.
+    const owned = await db
+      .select({ id: forms.id })
+      .from(forms)
+      .where(and(eq(forms.id, Number(form.get("formId") ?? 0)), eq(forms.eventId, eventId)))
+      .get();
+    if (!owned) return { error: "That form does not belong to this event.", notice: null };
+    const queued = await sendFormReminders(owned.id, 0);
     return {
       error: null,
       notice:

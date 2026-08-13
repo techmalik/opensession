@@ -1,7 +1,7 @@
 import { Form, Link, redirect, useNavigation } from "react-router";
 import { eq } from "drizzle-orm";
 import type { Route } from "./+types/login";
-import { createSessionCookie, verifyPassword } from "../lib/auth";
+import { ABSENT_ACCOUNT_HASH, createSessionCookie, verifyPassword } from "../lib/auth";
 import { landingFor, DEMO_ACCOUNTS } from "../lib/roles";
 import { getDb, sessionSecret } from "../lib/db.server";
 import { getUser } from "../lib/session.server";
@@ -46,8 +46,10 @@ export async function action({ request }: Route.ActionArgs) {
     .where(eq(users.email, email))
     .get();
 
-  // Same message either way: do not reveal which emails have accounts.
-  const ok = user ? await verifyPassword(password, user.passwordHash) : false;
+  // Same message either way, and the same work either way: an unknown email is
+  // verified against a fixed dummy hash so the reply does not come back faster for
+  // addresses that have no account.
+  const ok = await verifyPassword(password, user?.passwordHash ?? ABSENT_ACCOUNT_HASH);
   if (!user || !ok) {
     return { errors: { password: "That email and password do not match an account." }, email };
   }

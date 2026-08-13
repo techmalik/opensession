@@ -10,8 +10,10 @@ import { requireOrganizer } from "../lib/session.server";
 import {
   addContactsToEvent,
   addNote,
+  canSeeContact,
   contactActivity,
   contactConnections,
+  crmViewer,
   getContact,
   listEventsForPicker,
   listFields,
@@ -43,9 +45,10 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const contactId = Number(params.contactId);
-  const contact = await getContact(contactId);
+  const contact = await getContact(viewer, contactId);
   if (!contact) throw new Response("Contact not found", { status: 404 });
 
   const db = getDb();
@@ -73,11 +76,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       createdAt: contact.createdAt,
     },
     headshotUploadId: headshot?.id ?? null,
-    notes: await listNotes(contactId),
-    connections: await contactConnections(contactId),
-    activity: await contactActivity(contactId),
+    notes: await listNotes(viewer, contactId),
+    connections: await contactConnections(viewer, contactId),
+    activity: await contactActivity(viewer, contactId),
     fields: await listFields(),
-    events: await listEventsForPicker(),
+    events: await listEventsForPicker(viewer),
     stages: CRM_STAGES,
     prospect: prospect ?? null,
   };
@@ -85,7 +88,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export async function action({ request, params }: Route.ActionArgs) {
   const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const contactId = Number(params.contactId);
+  // Every branch below writes to this record, so the check belongs here, once.
+  if (!canSeeContact(viewer, contactId)) throw new Response("Contact not found", { status: 404 });
   const db = getDb();
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
@@ -114,12 +120,12 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "add-note") {
     const body = String(form.get("body") ?? "").trim();
     if (!body) return { error: "Write the note first.", notice: null };
-    await addNote(contactId, body, { id: user.id, name: user.name });
+    await addNote(viewer, contactId, body, { id: user.id, name: user.name });
     return { error: null, notice: "Note added." };
   }
 
   if (intent === "save-tags") {
-    await setTags(contactId, String(form.get("tags") ?? "").split(","));
+    await setTags(viewer, contactId, String(form.get("tags") ?? "").split(","));
     return { error: null, notice: "Tags saved." };
   }
 
@@ -127,15 +133,15 @@ export async function action({ request, params }: Route.ActionArgs) {
     const fields = await listFields();
     const values: Record<string, string> = {};
     for (const field of fields) values[field.fieldKey] = String(form.get(`custom_${field.fieldKey}`) ?? "").trim();
-    await setCustomValues(contactId, values);
+    await setCustomValues(viewer, contactId, values);
     return { error: null, notice: "Custom fields saved." };
   }
 
   if (intent === "add-to-event") {
     const eventId = Number(form.get("eventId") ?? 0);
     if (!eventId) return { error: "Choose an event.", notice: null };
-    const added = await addContactsToEvent(eventId, [contactId]);
-    const events = await listEventsForPicker();
+    const added = await addContactsToEvent(viewer, eventId, [contactId]);
+    const events = await listEventsForPicker(viewer);
     const name = events.find((row) => row.id === eventId)?.name ?? "the event";
     return {
       error: null,
@@ -145,6 +151,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (intent === "enroll") {
     await enrollProspect({
+      viewer,
       contactId,
       stage: "identified",
       score: null,
@@ -192,7 +199,7 @@ export default function CrmContact({ loaderData, actionData }: Route.ComponentPr
             <div className="flex items-start gap-4">
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-slate-100">
                 {headshotUploadId ? (
-                  <img src={`/files/${headshotUploadId}?inline=1`} alt={`Headshot of ${contact.name}`} className="h-full w-full object-cover" />
+                  <img src={`/files/${headshotUploadId}/image`} alt={`Headshot of ${contact.name}`} className="h-full w-full object-cover" />
                 ) : (
                   <span className="flex h-full w-full items-center justify-center text-lg font-medium text-slate-500">
                     {(contact.firstName[0] ?? "") + (contact.lastName[0] ?? "")}

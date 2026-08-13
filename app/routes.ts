@@ -64,6 +64,8 @@ export default [
 
   // Uploaded files, access-checked per requester.
   route("files/:uploadId", "routes/file.download.tsx"),
+  // Same access check, image bytes only: the thumbnail source for signed-in screens.
+  route("files/:uploadId/image", "routes/file.image.tsx"),
 
   route("docs/api", "routes/docs.api.tsx"),
 

@@ -23,7 +23,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const eventId = Number(params.eventId);
   const db = getDb();
   const form = await request.formData();
@@ -56,7 +56,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   } else {
     const created = await db
       .insert(contacts)
-      .values({ email, ...values, createdAt: new Date() })
+      .values({ email, ...values, createdBy: user.id, createdAt: new Date() })
       .returning({ id: contacts.id })
       .get();
     contactId = created.id;

@@ -8,7 +8,7 @@ import type { Route } from "./+types/event.speakers.email";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { getTemplate, listTemplates, mergeVars, queueBulk } from "../lib/comms.server";
-import { renderTemplate, MERGE_TAG_HELP } from "../lib/email";
+import { renderTemplate, renderTemplateHtml, MERGE_TAG_HELP } from "../lib/email";
 import { querySpeakers } from "../lib/speakers.server";
 import { events } from "../../database/schema";
 import {
@@ -74,7 +74,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           name: sample.name,
           email: sample.email,
           subject: renderTemplate(template.subject, vars),
-          body: renderTemplate(template.body, vars),
+          body: renderTemplateHtml(template.body, vars),
         };
       })()
     : null;

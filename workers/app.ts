@@ -17,12 +17,21 @@ function allowThirdPartyFraming(response: Response): Response {
   return out;
 }
 
+/** Public headshots are loaded as image sources, never framed, so they gain nothing
+ *  from frame-ancestors and lose their own sandbox policy to it. The route sets a
+ *  deny-everything CSP on purpose; this is the exception that lets it stand. */
+function isFrameless(pathname: string): boolean {
+  return pathname.includes("/headshot/");
+}
+
 export default {
   async fetch(request) {
     // Loaders/actions access bindings via `import { env } from "cloudflare:workers"`.
     const response = await requestHandler(request);
     const { pathname } = new URL(request.url);
-    return pathname.startsWith("/embed/v1/") ? allowThirdPartyFraming(response) : response;
+    return pathname.startsWith("/embed/v1/") && !isFrameless(pathname)
+      ? allowThirdPartyFraming(response)
+      : response;
   },
 
   // Outbox job runner: pending jobs (email, airtable_push, airtable_pull, reminder,

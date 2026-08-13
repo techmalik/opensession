@@ -4,6 +4,7 @@
 // Run: node scripts/gen-seed.mjs  (regenerate whenever the schema changes)
 import { webcrypto as crypto } from "node:crypto";
 import { writeFileSync } from "node:fs";
+import { headshotPng } from "./headshot-png.mjs";
 
 const ITERATIONS = 100_000;
 const b64 = (buf) => Buffer.from(buf).toString("base64");
@@ -19,12 +20,14 @@ const q = (s) => (s == null ? "NULL" : `'${String(s).replace(/'/g, "''")}'`);
 
 // Seeded headshots: flat initials tiles, no gradients, so the public speaker
 // widgets show real images without shipping photographs of real people.
+//
+// PNG, not SVG. Uploads and every route that serves them accept only PNG, JPEG,
+// WebP, and GIF, because SVG is a scriptable document and serving one back on this
+// origin is a same-origin script. The seed has to obey the same rule the product
+// enforces, or the seeded pictures would 404.
 const HEADSHOT_BG = ["#0f172a", "#334155", "#0d9166", "#0284c7", "#475569", "#7c3aed", "#b45309", "#be123c"];
-const headshotSvg = (first, last, id) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320" role="img" aria-label="${first} ${last}">` +
-  `<rect width="320" height="320" fill="${HEADSHOT_BG[(id - 1) % HEADSHOT_BG.length]}"/>` +
-  `<text x="160" y="160" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="128" font-weight="600" ` +
-  `text-anchor="middle" dominant-baseline="central">${first[0]}${last[0]}</text></svg>`;
+const headshotImage = (first, last, id) =>
+  headshotPng(`${first[0] ?? ""}${last[0] ?? ""}`, HEADSHOT_BG[(id - 1) % HEADSHOT_BG.length]);
 const ts = (iso) => Math.floor(new Date(iso).getTime() / 1000);
 const NOW = ts("2026-08-09T20:00:00Z");
 
@@ -121,11 +124,11 @@ const main = async () => {
   for (const c of contacts) {
     // Aisha (id 5) is deliberately left without a headshot so the public gallery's
     // missing-photo fallback is visible in the seeded data.
-    const headshotKey = c.id === 5 ? null : `headshot-seed/${c.id}.svg`;
+    const headshotKey = c.id === 5 ? null : `headshot-seed/${c.id}.png`;
     if (headshotKey) {
-      const svg = headshotSvg(c.first, c.last, c.id);
+      const png = headshotImage(c.first, c.last, c.id);
       push(
-        `INSERT INTO blobs (key,data,content_type,size,created_at) VALUES (${q(headshotKey)},X'${Buffer.from(svg, "utf8").toString("hex")}','image/svg+xml',${Buffer.byteLength(svg)},${NOW});`
+        `INSERT INTO blobs (key,data,content_type,size,created_at) VALUES (${q(headshotKey)},X'${png.toString("hex")}','image/png',${png.length},${NOW});`
       );
     }
     push(
@@ -239,7 +242,7 @@ const main = async () => {
     [3, 1, 4, 2, 1, "request-1-contact-4/slides-v1.pdf", "caching-strategies.pdf", "application/pdf", PDF_BYTES, "pending", 7, 6],
     // A real image, not a placeholder byte string: this one is displayed as Elena's
     // headshot on the speaker record and in the public speaker widgets.
-    [4, 2, 3, null, 1, "headshot-3/elena.svg", "elena-sorescu.svg", "image/svg+xml", Buffer.from(headshotSvg("Elena", "Sorescu", 3), "utf8"), "approved", 7, 120],
+    [4, 2, 3, null, 1, "headshot-3/elena.png", "elena-sorescu.png", "image/png", headshotImage("Elena", "Sorescu", 3), "approved", 7, 120],
   ];
   for (const [id, requestId, contactId, sessionId, version, key, filename, type, bytes, approval, uploader, ageHours] of uploads) {
     push(
@@ -250,7 +253,7 @@ const main = async () => {
       `INSERT INTO file_uploads (id,request_id,event_id,contact_id,session_id,version,blob_key,filename,content_type,size,approval,reviewed_by_user_id,reviewed_at,uploaded_by,created_at) VALUES (${id},${requestId},${EV},${contactId},${sessionId ?? "NULL"},${version},${q(key)},${q(filename)},${q(type)},${bytes.length},${q(approval)},${approval === "pending" ? "NULL" : 5},${reviewed},${uploader},${NOW - ageHours * 3600});`
     );
   }
-  push(`UPDATE contacts SET headshot_blob_key='headshot-3/elena.svg' WHERE id=3;`);
+  push(`UPDATE contacts SET headshot_blob_key='headshot-3/elena.png' WHERE id=3;`);
 
   // The thread the denial produced, readable from both the portal and the admin.
   const comments = [

@@ -3,7 +3,7 @@
 // because the app does not have it.
 
 import { Form, Link } from "react-router";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { Route } from "./+types/event.api";
 import { appBaseUrl, getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
@@ -29,7 +29,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const db = getDb();
   const event = await db
     .select({ id: events.id, name: events.name, timezone: events.timezone })
@@ -38,13 +38,22 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     .get();
   if (!event) throw new Response("Event not found", { status: 404 });
 
-  const tokens = await db
-    .select({ id: apiTokens.id, name: apiTokens.name, createdAt: apiTokens.createdAt, lastUsedAt: apiTokens.lastUsedAt })
-    .from(apiTokens)
+  // Your own keys, not the installation's. Anyone can sign up as an organizer, and
+  // a stranger being able to list and revoke other people's integrations is an
+  // outage they can cause on demand. Admins keep the full view.
+  const columns = {
+    id: apiTokens.id,
+    name: apiTokens.name,
+    createdAt: apiTokens.createdAt,
+    lastUsedAt: apiTokens.lastUsedAt,
+  };
+  const isAdmin = user.role === "admin";
+  const query = db.select(columns).from(apiTokens);
+  const tokens = await (isAdmin ? query : query.where(eq(apiTokens.createdBy, user.id)))
     .orderBy(desc(apiTokens.createdAt))
     .all();
 
-  return { event, tokens, baseUrl: appBaseUrl() };
+  return { event, tokens, baseUrl: appBaseUrl(), isAdmin };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -57,9 +66,9 @@ export async function action({ request }: Route.ActionArgs) {
     const name = String(form.get("name") ?? "").trim();
     if (!name) return { error: "Name the token after whatever will use it.", notice: null, token: null };
     const token = newToken();
-    // createdBy is what scopes the MCP server: over /mcp a token reaches only the
-    // events its creator can open. The REST endpoints are unchanged and stay
-    // installation-wide.
+    // createdBy is what scopes the token: both /api/v1 and /mcp filter every read
+    // and write through this organizer's event access, so a key can never reach
+    // further than the person who minted it.
     await db
       .insert(apiTokens)
       .values({ name, tokenHash: await hashToken(token), createdBy: user.id, createdAt: new Date() });
@@ -68,7 +77,10 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (intent === "revoke") {
     const id = Number(form.get("tokenId") ?? 0);
-    await db.delete(apiTokens).where(eq(apiTokens.id, id));
+    const scoped = user.role === "admin" ? eq(apiTokens.id, id) : and(eq(apiTokens.id, id), eq(apiTokens.createdBy, user.id));
+    const existing = await db.select({ id: apiTokens.id }).from(apiTokens).where(scoped).get();
+    if (!existing) return { error: "That token is not yours to revoke.", notice: null, token: null };
+    await db.delete(apiTokens).where(eq(apiTokens.id, existing.id));
     return { error: null, notice: "Token revoked. Any client using it now gets a 401.", token: null };
   }
 
@@ -76,7 +88,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function ApiTokensScreen({ loaderData, actionData, params }: Route.ComponentProps) {
-  const { event, tokens, baseUrl } = loaderData;
+  const { event, tokens, baseUrl, isAdmin } = loaderData;
   const base = `/admin/${params.eventId}`;
   const created = actionData?.token ?? null;
 
@@ -84,7 +96,9 @@ export default function ApiTokensScreen({ loaderData, actionData, params }: Rout
     <>
       <PageHeader
         title="API"
-        description="Tokens for the public API and the MCP server. On /api/v1 a token reads and writes every event on this installation; over MCP it reaches only the events its creator can open."
+        description={`Tokens for the public API and the MCP server. A token reaches exactly the events the person who created it can open, on /api/v1 and over MCP alike. ${
+          isAdmin ? "As an admin you see every token on this installation." : "You see the tokens you created."
+        }`}
       />
       <SubNav
         items={[

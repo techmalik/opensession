@@ -9,6 +9,7 @@ import { requireOrganizer } from "../lib/session.server";
 import {
   addContactsToEvent,
   createSegment,
+  crmViewer,
   filterOptions,
   listContacts,
   listEventsForPicker,
@@ -35,20 +36,21 @@ function readFilters(url: URL): CrmFilters {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const url = new URL(request.url);
   const filters = readFilters(url);
 
-  const rows = await listContacts(filters);
-  const all = await listContacts();
+  const rows = await listContacts(viewer, filters);
+  const all = await listContacts(viewer);
 
   return {
     rows,
     total: all.length,
     filters,
-    options: await filterOptions(),
-    segments: await listSegments(),
-    events: await listEventsForPicker(),
+    options: await filterOptions(viewer),
+    segments: await listSegments(viewer),
+    events: await listEventsForPicker(viewer),
     stages: CRM_STAGES,
     duplicateCount: all.filter((row) => row.duplicateOf != null).length,
   };
@@ -56,6 +58,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
   const ids = form.getAll("ids").map(Number).filter(Number.isInteger);
@@ -88,8 +91,8 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "add-to-event") {
     const eventId = Number(form.get("eventId") ?? 0);
     if (!eventId) return { error: "Choose an event.", notice: null };
-    const added = await addContactsToEvent(eventId, ids);
-    const events = await listEventsForPicker();
+    const added = await addContactsToEvent(viewer, eventId, ids);
+    const events = await listEventsForPicker(viewer);
     const name = events.find((row) => row.id === eventId)?.name ?? "the event";
     return {
       error: null,

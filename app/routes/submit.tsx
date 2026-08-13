@@ -25,7 +25,7 @@ import {
   withColumnFallbacks,
   type FieldDef,
 } from "../lib/cfp.server";
-import { sendEmail, renderTemplate } from "../lib/email";
+import { sendEmail, renderTemplate, renderTemplateHtml } from "../lib/email";
 import { newBlobKey, putFile } from "../lib/storage";
 import { daysUntil, formatDate, formatDateRange } from "../lib/format";
 import {
@@ -581,7 +581,7 @@ export async function action({ request, params }: Route.ActionArgs): Promise<Res
         toContactId: contactId,
         toName: vars.speaker_name,
         subject: renderTemplate(form.confirmationSubject || "We received your proposal for {event_name}", vars),
-        bodyHtml: renderTemplate(
+        bodyHtml: renderTemplateHtml(
           form.confirmationBody ||
             '<p>Hi {speaker_name},</p><p>We received your proposal "{talk_title}" for {event_name}.</p><p>{portal_url}</p>',
           vars

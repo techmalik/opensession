@@ -7,7 +7,13 @@
 // honour it display the schedule in the conference's local time.
 
 function icsEscape(text: string): string {
-  return text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  // CRLF, lone LF, and lone CR all become \n. A bare carriage return left in place is
+  // a line break to a permissive calendar client, which is one property injection.
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n|\r|\n/g, "\\n");
 }
 
 function icsDate(value: Date): string {

@@ -3,8 +3,8 @@
 import type { Route } from "./+types/api.event";
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/db.server";
-import { apiError, corsPreflight, isResponse, json, requireToken } from "../lib/api.server";
-import { events, sessions, statuses } from "../../database/schema";
+import { apiError, corsPreflight, isResponse, json, requireToken, tokenEvent } from "../lib/api.server";
+import { sessions, statuses } from "../../database/schema";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   if (request.method === "OPTIONS") return corsPreflight();
@@ -15,7 +15,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!Number.isInteger(eventId)) return apiError(400, "invalid_id", "The event id must be a number.");
 
   const db = getDb();
-  const event = await db.select().from(events).where(eq(events.id, eventId)).get();
+  const event = await tokenEvent(auth, eventId);
   if (!event) return apiError(404, "not_found", `No event with id ${eventId}.`);
 
   // The public count has to mean what a visitor would actually see, which is the

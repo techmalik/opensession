@@ -27,13 +27,18 @@ export function getDb() {
   return drizzle(bindings.DB);
 }
 
+/** The HMAC key every session cookie is signed and verified with.
+ *
+ *  There is deliberately no fallback. A published fallback key is a signing key an
+ *  attacker already has: any deployment missing the binding would accept cookies
+ *  minted for arbitrary user ids. Refusing to run is the safe failure. */
 export function sessionSecret(): string {
   const secret = bindings.SESSION_SECRET;
   if (!secret) {
-    // Loud in production, tolerable locally: sessions still sign, but with a value
-    // an attacker could guess. Set SESSION_SECRET in .dev.vars or via wrangler secret.
-    console.warn("SESSION_SECRET is not set. Falling back to an insecure development value.");
-    return "insecure-development-session-secret";
+    throw new Error(
+      "SESSION_SECRET is not set. Sessions cannot be signed without it. " +
+        "Set it with `wrangler secret put SESSION_SECRET`, or in .dev.vars for local development."
+    );
   }
   return secret;
 }

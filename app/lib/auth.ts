@@ -20,11 +20,27 @@ export async function hashPassword(password: string, saltB64?: string): Promise<
   return `pbkdf2$${ITERATIONS}$${b64(salt.buffer as ArrayBuffer)}$${b64(bits)}`;
 }
 
+/** A well-formed hash of nothing. Sign-in verifies against this when the email is
+ *  unknown, so an account that does not exist costs the same 100,000 iterations as
+ *  one that does and the response time stops answering "is this address registered".
+ *  Its derived bytes are all zeroes, so no password can match it. */
+export const ABSENT_ACCOUNT_HASH =
+  `pbkdf2$${ITERATIONS}$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=`;
+
+/** Length-independent, branch-free comparison over the whole string. Comparing
+ *  derived hashes with === leaks how many leading bytes matched. */
+function constantTimeEquals(a: string, b: string): boolean {
+  let diff = a.length ^ b.length;
+  const length = Math.max(a.length, b.length);
+  for (let i = 0; i < length; i++) diff |= (a.charCodeAt(i) | 0) ^ (b.charCodeAt(i) | 0);
+  return diff === 0;
+}
+
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parts = stored.split("$");
   if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
   const recomputed = await hashPassword(password, parts[2]);
-  return recomputed === stored;
+  return constantTimeEquals(recomputed.split("$")[3] ?? "", parts[3]);
 }
 
 // ---- Signed session cookie (HMAC-SHA256) ----

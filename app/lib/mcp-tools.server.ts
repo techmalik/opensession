@@ -11,7 +11,7 @@ import { querySubmissions } from "./submissions.server";
 import { querySpeakers } from "./speakers.server";
 import { loadAgenda } from "./agenda.server";
 import { deliverableMatrix, taskMatrix } from "./tasks.server";
-import { scopedEvent, scopedEvents, type TokenScope } from "./mcp-scope.server";
+import { scopedEvent, scopedEvents, type TokenScope } from "./token-scope.server";
 import { rooms, sessions, tracks } from "../../database/schema";
 import { action as apiSessionAction } from "../routes/api.session";
 

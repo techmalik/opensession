@@ -36,7 +36,30 @@ export interface AccelState {
 }
 
 export const ACCEL_KEY = "accelevents";
-export const ACCEL_DEFAULT_BASE = "https://api.accelevents.com/api/v2";
+
+/** The only host this integration will ever talk to. The base URL is configurable
+ *  because the path prefix differs by account, but the origin is not: a free-text
+ *  destination for a request that carries the stored bearer token and every active
+ *  event's speaker records is an exfiltration endpoint waiting to be filled in. */
+export const ACCEL_ALLOWED_ORIGIN = "https://api.accelevents.com";
+export const ACCEL_DEFAULT_BASE = `${ACCEL_ALLOWED_ORIGIN}/api/v2`;
+export const ACCEL_BASE_REJECTED = `The API base URL has to be on ${ACCEL_ALLOWED_ORIGIN} over HTTPS.`;
+
+/** The base URL to use, or null when the configured one is not on the allowed
+ *  origin. Trailing slashes are trimmed so callers can always append "/path". */
+export function normalizeAccelBaseUrl(raw: string): string | null {
+  const candidate = raw.trim() || ACCEL_DEFAULT_BASE;
+  let url: URL;
+  try {
+    url = new URL(candidate);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  if (url.origin !== ACCEL_ALLOWED_ORIGIN) return null;
+  if (url.search || url.hash) return null;
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
+}
 
 const EMPTY: AccelState = {
   config: { apiKey: "", eventId: "", baseUrl: ACCEL_DEFAULT_BASE, enabled: false },
@@ -174,7 +197,7 @@ export interface AccelDryRun {
 export async function accelDryRun(db: D1Database, eventId: number): Promise<AccelDryRun> {
   const state = await accelState();
   const payload = await buildAccelPayload(db, eventId);
-  const base = state.config.baseUrl || ACCEL_DEFAULT_BASE;
+  const base = normalizeAccelBaseUrl(state.config.baseUrl) ?? ACCEL_DEFAULT_BASE;
   const remote = state.config.eventId || "<event id>";
   return {
     payload,
@@ -221,7 +244,9 @@ export async function pushToAccelevents(env: AccelEnv): Promise<AccelLogEntry[]>
     }
 
     try {
-      const base = `${state.config.baseUrl || ACCEL_DEFAULT_BASE}/${state.config.eventId}`;
+      const origin = normalizeAccelBaseUrl(state.config.baseUrl);
+      if (!origin) throw new Error(ACCEL_BASE_REJECTED);
+      const base = `${origin}/${state.config.eventId}`;
       const headers = {
         Authorization: `Bearer ${state.config.apiKey}`,
         "Content-Type": "application/json",
@@ -232,7 +257,17 @@ export async function pushToAccelevents(env: AccelEnv): Promise<AccelLogEntry[]>
         ["sessions", payload.sessions],
       ] as const) {
         if (records.length === 0) continue;
-        const res = await fetch(`${base}/${path}`, { method: "POST", headers, body: JSON.stringify({ data: records }) });
+        // redirect: "manual" so a 3xx cannot walk the bearer token off the allowed
+        // origin. A redirect is a misconfiguration here, and it is reported as one.
+        const res = await fetch(`${base}/${path}`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ data: records }),
+          redirect: "manual",
+        });
+        if (res.status >= 300 && res.status < 400) {
+          throw new Error(`${path}: the API redirected (${res.status}); refusing to follow it off ${ACCEL_ALLOWED_ORIGIN}.`);
+        }
         if (!res.ok) throw new Error(`${path}: ${res.status} ${(await res.text()).slice(0, 200)}`);
       }
 

@@ -28,7 +28,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const eventId = Number(params.eventId);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
@@ -52,7 +52,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     const table = parseCsv(csv);
     if (table.length < 2) return { error: "Nothing to import.", preview: null, csv: null };
     const preview = await previewImport(eventId, table);
-    const result = await applyImport(eventId, preview);
+    const result = await applyImport(eventId, preview, user.id);
     const query = new URLSearchParams({
       imported: String(result.created),
       updated: String(result.updated),

@@ -89,6 +89,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
 
+  // Assignee and completion rows carry no event of their own, so a posted task id is
+  // resolved against the route event first and only the verified row is used.
+  const ownedTask = (taskId: number) =>
+    db
+      .select({ id: portalTasks.id })
+      .from(portalTasks)
+      .where(and(eq(portalTasks.id, taskId), eq(portalTasks.eventId, eventId)))
+      .get();
+
   if (intent === "create" || intent === "update") {
     const title = String(form.get("title") ?? "").trim();
     if (!title) return { error: "Enter a task title.", notice: null };
@@ -121,17 +130,19 @@ export async function action({ request, params }: Route.ActionArgs) {
       return { error: null, notice: `Task "${title}" created.` };
     }
 
-    const taskId = Number(form.get("taskId") ?? 0);
-    await db.update(portalTasks).set(values).where(and(eq(portalTasks.id, taskId), eq(portalTasks.eventId, eventId)));
-    await setAssignees(taskId, appliesTo === "selected" ? assignees : []);
+    const owned = await ownedTask(Number(form.get("taskId") ?? 0));
+    if (!owned) throw new Response("Task not found", { status: 404 });
+    await db.update(portalTasks).set(values).where(eq(portalTasks.id, owned.id));
+    await setAssignees(owned.id, appliesTo === "selected" ? assignees : []);
     return { error: null, notice: `Task "${title}" saved.` };
   }
 
   if (intent === "delete") {
-    const taskId = Number(form.get("taskId") ?? 0);
-    await db.delete(portalTasks).where(and(eq(portalTasks.id, taskId), eq(portalTasks.eventId, eventId)));
-    await db.delete(taskAssignees).where(eq(taskAssignees.taskId, taskId));
-    await db.delete(taskCompletions).where(eq(taskCompletions.taskId, taskId));
+    const owned = await ownedTask(Number(form.get("taskId") ?? 0));
+    if (!owned) throw new Response("Task not found", { status: 404 });
+    await db.delete(portalTasks).where(eq(portalTasks.id, owned.id));
+    await db.delete(taskAssignees).where(eq(taskAssignees.taskId, owned.id));
+    await db.delete(taskCompletions).where(eq(taskCompletions.taskId, owned.id));
     return { error: null, notice: "Task deleted." };
   }
 
@@ -140,12 +151,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     const contactId = Number(form.get("contactId") ?? 0);
     const done = String(form.get("done") ?? "") === "1";
 
-    // The task must belong to this event before anything is written.
-    const owned = await db
-      .select({ id: portalTasks.id })
-      .from(portalTasks)
-      .where(and(eq(portalTasks.id, taskId), eq(portalTasks.eventId, eventId)))
-      .get();
+    const owned = await ownedTask(taskId);
     if (!owned) return { error: "That task does not belong to this event.", notice: null };
 
     const existing = await db

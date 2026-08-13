@@ -18,6 +18,9 @@ export async function findOrCreateContact(input: {
   title?: string | null;
   company?: string | null;
   bio?: string | null;
+  /** The signed-in user entering this person, when there is one. Half of the CRM
+   *  visibility rule; null for public self-service paths, which link to an event. */
+  createdBy?: number | null;
 }): Promise<number> {
   const db = getDb();
   const email = input.email.trim().toLowerCase();
@@ -35,6 +38,7 @@ export async function findOrCreateContact(input: {
       title: input.title ?? null,
       company: input.company ?? null,
       bio: input.bio ?? null,
+      createdBy: input.createdBy ?? null,
       createdAt: now,
       updatedAt: now,
     })

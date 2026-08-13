@@ -264,8 +264,11 @@ export interface ImportResult {
   skipped: number;
 }
 
-/** Applies a preview. Existing contacts keep any value the CSV leaves blank. */
-export async function applyImport(eventId: number, preview: ImportPreview): Promise<ImportResult> {
+/** Applies a preview. Existing contacts keep any value the CSV leaves blank.
+ *  createdBy is stamped on new rows so an import into the org database alone still
+ *  belongs to somebody: without an event link it is the only thing making the record
+ *  visible to the person who imported it. */
+export async function applyImport(eventId: number, preview: ImportPreview, createdBy: number | null = null): Promise<ImportResult> {
   const db = getDb();
   const now = new Date();
   const result: ImportResult = { created: 0, updated: 0, skipped: 0 };
@@ -303,17 +306,20 @@ export async function applyImport(eventId: number, preview: ImportPreview): Prom
     } else {
       const created = await db
         .insert(contacts)
-        .values({ email: row.email, ...values, createdAt: now })
+        .values({ email: row.email, ...values, createdBy, createdAt: now })
         .returning({ id: contacts.id })
         .get();
       contactId = created.id;
       result.created += 1;
     }
 
-    await db
-      .insert(eventContacts)
-      .values({ eventId, contactId, kind: "speaker" })
-      .onConflictDoNothing();
+    // eventId 0 means "org database only": there is no roster to add them to.
+    if (eventId > 0) {
+      await db
+        .insert(eventContacts)
+        .values({ eventId, contactId, kind: "speaker" })
+        .onConflictDoNothing();
+    }
   }
 
   return result;

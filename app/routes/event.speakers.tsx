@@ -262,7 +262,7 @@ export default function Speakers({ loaderData, actionData, params }: Route.Compo
                           <span className="flex items-center gap-2">
                             <span className="h-6 w-6 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-50">
                               {headshotId ? (
-                                <img src={`/files/${headshotId}?inline=1`} alt="" className="h-full w-full object-cover" />
+                                <img src={`/files/${headshotId}/image`} alt="" className="h-full w-full object-cover" />
                               ) : null}
                             </span>
                             <Link to={`${base}/speakers/${row.contactId}`} className="font-medium text-slate-900 hover:text-accent">

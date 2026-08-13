@@ -5,7 +5,7 @@
 import { Form, Link } from "react-router";
 import type { Route } from "./+types/crm.duplicates";
 import { requireOrganizer } from "../lib/session.server";
-import { contactsByIds, duplicateGroups, mergeContacts } from "../lib/crm.server";
+import { contactsByIds, crmViewer, duplicateGroups, mergeContacts } from "../lib/crm.server";
 import { Card, EmptyState, ErrorNotice, Notice, PageHeader, buttonDanger, buttonSecondary } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
@@ -13,7 +13,8 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const url = new URL(request.url);
   const compare = url.searchParams.get("compare");
   const ids = (compare ?? "")
@@ -22,13 +23,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     .filter((id) => Number.isInteger(id) && id > 0);
 
   return {
-    groups: await duplicateGroups(),
-    compare: ids.length === 2 ? await contactsByIds(ids) : [],
+    groups: await duplicateGroups(viewer),
+    compare: ids.length === 2 ? await contactsByIds(viewer, ids) : [],
   };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const form = await request.formData();
   if (String(form.get("intent")) !== "merge") return { error: null, notice: null };
 
@@ -38,7 +40,7 @@ export async function action({ request }: Route.ActionArgs) {
     return { error: "Pick two different records, and which one survives.", notice: null };
   }
 
-  const merged = await mergeContacts(primaryId, duplicateId, {
+  const merged = await mergeContacts(viewer, primaryId, duplicateId, {
     firstName: String(form.get("firstName") ?? "").trim(),
     lastName: String(form.get("lastName") ?? "").trim(),
     email: String(form.get("email") ?? "").trim(),

@@ -4,7 +4,7 @@
 import { Form, Link } from "react-router";
 import type { Route } from "./+types/crm.prospect";
 import { requireOrganizer } from "../lib/session.server";
-import { addProspectNote, moveProspect, prospectDetail } from "../lib/crm.server";
+import { addProspectNote, crmViewer, moveProspect, prospectDetail } from "../lib/crm.server";
 import { CRM_STAGES, isCrmStage, STAGE_LABEL } from "../lib/crm-view";
 import { formatDateTime } from "../lib/format";
 import { Breadcrumbs, Card, ErrorNotice, Notice, PageHeader, buttonPrimary, buttonSecondary, selectClass, textareaClass } from "../components/ui";
@@ -14,14 +14,15 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request);
-  const detail = await prospectDetail(Number(params.prospectId));
+  const user = await requireOrganizer(request);
+  const detail = await prospectDetail(await crmViewer(user), Number(params.prospectId));
   if (!detail) throw new Response("Prospect not found", { status: 404 });
   return { card: detail.card, history: detail.history, stages: CRM_STAGES };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const prospectId = Number(params.prospectId);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
@@ -30,14 +31,14 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "add-note") {
     const body = String(form.get("body") ?? "").trim();
     if (!body) return { error: "Write the note first.", notice: null };
-    await addProspectNote(prospectId, body, author);
+    await addProspectNote(viewer, prospectId, body, author);
     return { error: null, notice: "Note added." };
   }
 
   if (intent === "move") {
     const stage = String(form.get("stage") ?? "");
     if (!isCrmStage(stage)) return { error: "That stage does not exist.", notice: null };
-    const moved = await moveProspect(prospectId, stage, author);
+    const moved = await moveProspect(viewer, prospectId, stage, author);
     return { error: null, notice: moved ? `Moved to ${STAGE_LABEL[stage]}.` : "Already in that stage." };
   }
 

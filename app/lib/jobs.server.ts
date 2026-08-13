@@ -2,7 +2,7 @@
 // Claims up to 25 due jobs and executes by kind. Each handler must be idempotent.
 
 import { drizzle } from "drizzle-orm/d1";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { deliverEmail } from "./email";
 import { jobs } from "../../database/schema";
 
@@ -61,9 +61,21 @@ const handlers: Record<string, Handler> = {
   },
 };
 
+/** How long a claim holds. Handlers are seconds of work; ten minutes is two cron
+ *  ticks of headroom before another isolate is allowed to take the job back. */
+const LEASE_MS = 10 * 60_000;
+
 export async function runJobs(env: JobsEnv): Promise<void> {
   const db = drizzle(env.DB);
   const now = new Date();
+
+  // A job whose worker died mid-handler is stuck on "running" forever otherwise: the
+  // status was set before the work and nothing ever set it back. Anything past its
+  // lease (or from before leases existed) goes back in the queue.
+  await db
+    .update(jobs)
+    .set({ status: "pending", lastError: "Reclaimed: the previous run did not finish." })
+    .where(and(eq(jobs.status, "running"), or(isNull(jobs.leaseUntil), lt(jobs.leaseUntil, now))));
 
   // Turn recurring intentions (form reminder offsets, the weekly digest, the hourly
   // integration pushes) into dated rows before claiming work. Idempotent per payload.
@@ -83,22 +95,37 @@ export async function runJobs(env: JobsEnv): Promise<void> {
     .limit(25);
 
   for (const job of due) {
-    await db.update(jobs).set({ status: "running", attempts: job.attempts + 1 }).where(eq(jobs.id, job.id));
+    // Claim and transition in one statement. Selecting then updating lets two
+    // overlapping cron invocations both pick up the same row and send the same
+    // email twice; only one UPDATE can match status = "pending".
+    const claimed = await db
+      .update(jobs)
+      .set({
+        status: "running",
+        attempts: sql`${jobs.attempts} + 1`,
+        leaseUntil: new Date(now.getTime() + LEASE_MS),
+      })
+      .where(and(eq(jobs.id, job.id), eq(jobs.status, "pending")))
+      .returning({ id: jobs.id, kind: jobs.kind, payloadJson: jobs.payloadJson, attempts: jobs.attempts })
+      .get();
+    if (!claimed) continue;
+
     try {
-      const handler = handlers[job.kind];
-      if (!handler) throw new Error(`No handler for kind ${job.kind}`);
-      await handler(env, JSON.parse(job.payloadJson) as Record<string, unknown>);
-      await db.update(jobs).set({ status: "done" }).where(eq(jobs.id, job.id));
+      const handler = handlers[claimed.kind];
+      if (!handler) throw new Error(`No handler for kind ${claimed.kind}`);
+      await handler(env, JSON.parse(claimed.payloadJson) as Record<string, unknown>);
+      await db.update(jobs).set({ status: "done", leaseUntil: null }).where(eq(jobs.id, claimed.id));
     } catch (err) {
-      const failed = job.attempts + 1 >= 5;
+      const failed = claimed.attempts >= 5;
       await db
         .update(jobs)
         .set({
           status: failed ? "failed" : "pending",
+          leaseUntil: null,
           lastError: String(err).slice(0, 500),
-          runAfter: new Date(Date.now() + Math.min(60_000 * 2 ** job.attempts, 3_600_000)),
+          runAfter: new Date(Date.now() + Math.min(60_000 * 2 ** (claimed.attempts - 1), 3_600_000)),
         })
-        .where(eq(jobs.id, job.id));
+        .where(eq(jobs.id, claimed.id));
     }
   }
 }

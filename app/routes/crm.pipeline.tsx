@@ -5,7 +5,7 @@
 import { Form, Link } from "react-router";
 import type { Route } from "./+types/crm.pipeline";
 import { requireOrganizer } from "../lib/session.server";
-import { enrollProspect, listContacts, listEventsForPicker, listProspects, moveProspect, removeProspect } from "../lib/crm.server";
+import { crmViewer, enrollProspect, listContacts, listEventsForPicker, listProspects, moveProspect, removeProspect } from "../lib/crm.server";
 import { CRM_STAGES, isCrmStage, STAGE_LABEL } from "../lib/crm-view";
 import { formatDateTime } from "../lib/format";
 import { Card, ErrorNotice, Field, Notice, PageHeader, buttonPrimary, buttonSecondary, inputClass, selectClass, textareaClass } from "../components/ui";
@@ -15,9 +15,10 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const url = new URL(request.url);
-  const cards = await listProspects();
+  const cards = await listProspects(viewer);
   const enrolled = new Set(cards.map((card) => card.contactId));
 
   return {
@@ -27,14 +28,15 @@ export async function loader({ request }: Route.LoaderArgs) {
       cards: cards.filter((card) => card.stage === stage.key),
     })),
     total: cards.length,
-    candidates: (await listContacts()).filter((row) => !enrolled.has(row.id)),
-    events: await listEventsForPicker(),
+    candidates: (await listContacts(viewer)).filter((row) => !enrolled.has(row.id)),
+    events: await listEventsForPicker(viewer),
     enrollOpen: url.searchParams.get("enroll") === "1",
   };
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const user = await requireOrganizer(request);
+  const viewer = await crmViewer(user);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
   const author = { id: user.id, name: user.name };
@@ -50,6 +52,7 @@ export async function action({ request }: Route.ActionArgs) {
       return { error: "Score must be a number from 0 to 100.", notice: null };
     }
     await enrollProspect({
+      viewer,
       contactId,
       stage,
       score,
@@ -64,12 +67,12 @@ export async function action({ request }: Route.ActionArgs) {
     const prospectId = Number(form.get("prospectId") ?? 0);
     const stage = String(form.get("stage") ?? "");
     if (!isCrmStage(stage)) return { error: "That stage does not exist.", notice: null };
-    const moved = await moveProspect(prospectId, stage, author);
+    const moved = await moveProspect(viewer, prospectId, stage, author);
     return { error: null, notice: moved ? `Moved to ${STAGE_LABEL[stage]}.` : "That card is already in that stage." };
   }
 
   if (intent === "remove") {
-    await removeProspect(Number(form.get("prospectId") ?? 0));
+    await removeProspect(viewer, Number(form.get("prospectId") ?? 0));
     return { error: null, notice: "Removed from the pipeline." };
   }
 

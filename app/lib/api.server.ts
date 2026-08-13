@@ -6,6 +6,14 @@
 
 import { eq } from "drizzle-orm";
 import { getDb } from "./db.server";
+import {
+  CREATORLESS_TOKEN_MESSAGE,
+  scopeForToken,
+  scopedEvent,
+  scopedEvents,
+  type ScopedEventRow,
+  type TokenScope,
+} from "./token-scope.server";
 import { apiTokens } from "../../database/schema";
 
 export interface ApiError {
@@ -46,9 +54,17 @@ export function newToken(): string {
 export interface AuthedToken {
   id: number;
   name: string;
+  /** The organizer this token belongs to, and therefore what it can reach. */
+  createdBy: number;
+  scope: TokenScope;
 }
 
-/** Returns the token row, or a 401 Response to hand straight back. */
+/** Returns the token row, or a 401/403 Response to hand straight back.
+ *
+ *  A token is not installation-wide. It carries its creator, and every handler
+ *  filters through that creator's event access, so an account created at /signup
+ *  cannot mint a key that reads another organizer's submissions. A token with no
+ *  reachable creator is refused outright rather than quietly granted everything. */
 export async function requireToken(request: Request): Promise<AuthedToken | Response> {
   const presented = request.headers.get("x-access-token")?.trim();
   if (!presented) {
@@ -66,7 +82,22 @@ export async function requireToken(request: Request): Promise<AuthedToken | Resp
   } catch {
     /* ignore */
   }
-  return { id: row.id, name: row.name };
+
+  const scope = await scopeForToken(row.id, row.name);
+  if (!row.createdBy || !scope.user) return apiError(403, "unowned_token", CREATORLESS_TOKEN_MESSAGE);
+
+  return { id: row.id, name: row.name, createdBy: row.createdBy, scope };
+}
+
+/** Every event this token may read, newest first. */
+export function tokenEvents(auth: AuthedToken): Promise<ScopedEventRow[]> {
+  return scopedEvents(auth.scope);
+}
+
+/** The event, or null when it does not exist or this token cannot reach it. Callers
+ *  answer both with the same 404, so ids cannot be probed. */
+export function tokenEvent(auth: AuthedToken, eventId: number): Promise<ScopedEventRow | null> {
+  return scopedEvent(auth.scope, eventId);
 }
 
 export interface Page {

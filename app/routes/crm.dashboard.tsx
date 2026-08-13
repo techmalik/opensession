@@ -5,7 +5,7 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/crm.dashboard";
 import { requireOrganizer } from "../lib/session.server";
-import { crmDashboard } from "../lib/crm.server";
+import { crmDashboard, crmViewer } from "../lib/crm.server";
 import { STAGE_LABEL } from "../lib/crm-view";
 import { formatDate } from "../lib/format";
 import { Card, PageHeader, buttonPrimary, buttonSecondary } from "../components/ui";
@@ -15,8 +15,8 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireOrganizer(request);
-  return { data: await crmDashboard() };
+  const user = await requireOrganizer(request);
+  return { data: await crmDashboard(await crmViewer(user)) };
 }
 
 function Kpi({ label, value, to }: { label: string; value: number; to?: string }) {

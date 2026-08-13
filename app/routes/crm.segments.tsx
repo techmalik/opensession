@@ -4,7 +4,7 @@
 import { Form, Link } from "react-router";
 import type { Route } from "./+types/crm.segments";
 import { requireOrganizer } from "../lib/session.server";
-import { deleteSegment, listSegments } from "../lib/crm.server";
+import { crmViewer, deleteSegment, getSegment, listSegments } from "../lib/crm.server";
 import { Card, EmptyState, Notice, PageHeader, buttonSecondary } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
@@ -12,15 +12,19 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireOrganizer(request);
-  return { segments: await listSegments() };
+  const user = await requireOrganizer(request);
+  return { segments: await listSegments(await crmViewer(user)) };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const form = await request.formData();
   if (String(form.get("intent")) !== "delete") return { notice: null };
-  await deleteSegment(Number(form.get("segmentId") ?? 0));
+  const segmentId = Number(form.get("segmentId") ?? 0);
+  // A segment you cannot see is not yours to delete.
+  const viewer = await crmViewer(user);
+  if (!(await getSegment(viewer, segmentId))) return { notice: "That segment could not be found." };
+  await deleteSegment(segmentId);
   return { notice: "Segment deleted." };
 }
 

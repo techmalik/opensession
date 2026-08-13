@@ -78,10 +78,22 @@ export async function action({ request, params }: Route.ActionArgs) {
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
 
+  // A posted request id is scoped to the route event before anything reads or
+  // writes its children: the assignee rows carry no event of their own, so without
+  // this an id from another event would have its audience wiped from here.
+  async function ownedRequest(requestId: number) {
+    return db
+      .select({ id: fileRequests.id })
+      .from(fileRequests)
+      .where(and(eq(fileRequests.id, requestId), eq(fileRequests.eventId, eventId)))
+      .get();
+  }
+
   if (intent === "delete") {
-    const requestId = Number(form.get("requestId") ?? 0);
-    await db.delete(fileRequests).where(and(eq(fileRequests.id, requestId), eq(fileRequests.eventId, eventId)));
-    await db.delete(fileRequestAssignees).where(eq(fileRequestAssignees.requestId, requestId));
+    const owned = await ownedRequest(Number(form.get("requestId") ?? 0));
+    if (!owned) throw new Response("File request not found", { status: 404 });
+    await db.delete(fileRequests).where(eq(fileRequests.id, owned.id));
+    await db.delete(fileRequestAssignees).where(eq(fileRequestAssignees.requestId, owned.id));
     return { error: null, notice: "File request deleted. Uploads already received are kept." };
   }
 
@@ -128,9 +140,10 @@ export async function action({ request, params }: Route.ActionArgs) {
     return { error: null, notice: `File request "${title}" created.` };
   }
 
-  const requestId = Number(form.get("requestId") ?? 0);
-  await db.update(fileRequests).set(values).where(and(eq(fileRequests.id, requestId), eq(fileRequests.eventId, eventId)));
-  await setAssignees(requestId, appliesTo === "selected" ? assignees : []);
+  const owned = await ownedRequest(Number(form.get("requestId") ?? 0));
+  if (!owned) throw new Response("File request not found", { status: 404 });
+  await db.update(fileRequests).set(values).where(eq(fileRequests.id, owned.id));
+  await setAssignees(owned.id, appliesTo === "selected" ? assignees : []);
   return { error: null, notice: `File request "${title}" saved.` };
 }
 

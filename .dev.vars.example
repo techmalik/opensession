@@ -1,4 +1,6 @@
 # Copy to .dev.vars for local dev. Never commit .dev.vars.
+# Required. There is no fallback key: without SESSION_SECRET the app refuses to
+# sign or read a session, because a shared default key is a key an attacker has.
 SESSION_SECRET=change-me-long-random-string
 # Brevo transactional email API key (optional locally; emails log with status "test" without it)
 BREVO_API_KEY=

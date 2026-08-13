@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import type { Route } from "./+types/portal.profile";
 import { bindings, getDb } from "../lib/db.server";
 import { requireSpeaker, myEvents, myProfile } from "../lib/portal.server";
+import { RASTER_ACCEPT, RASTER_REJECTED, sniffImageType } from "../lib/image-type";
 import { newBlobKey, putFile } from "../lib/storage";
 import { contacts, fileUploads } from "../../database/schema";
 import {
@@ -26,7 +27,6 @@ export function meta(): Route.MetaDescriptors {
 }
 
 const MAX_HEADSHOT_BYTES = 5 * 1024 * 1024;
-const HEADSHOT_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user, contactId } = await requireSpeaker(request);
@@ -60,11 +60,14 @@ export async function action({ request }: Route.ActionArgs) {
     if (headshot.size > MAX_HEADSHOT_BYTES) {
       return { error: "That image is larger than 5 MB. Upload a smaller file.", notice: null };
     }
-    if (headshot.type && !HEADSHOT_TYPES.includes(headshot.type)) {
-      return { error: "Headshots must be PNG, JPEG, or WebP.", notice: null };
-    }
+    // The declared type is whatever the uploading client chose to say. Only the
+    // bytes decide: a file that is not really a raster image never reaches storage.
+    const data = await headshot.arrayBuffer();
+    const imageType = sniffImageType(data);
+    if (!imageType) return { error: RASTER_REJECTED, notice: null };
+
     const key = newBlobKey(`headshot-${contactId}`, headshot.name || "headshot.png");
-    await putFile(bindings, key, await headshot.arrayBuffer(), headshot.type || "image/png");
+    await putFile(bindings, key, data, imageType);
     headshotBlobKey = key;
 
     // Recorded as an upload too, so the organizer sees it in the files list with
@@ -78,7 +81,7 @@ export async function action({ request }: Route.ActionArgs) {
       version: 1,
       blobKey: key,
       filename: headshot.name || "headshot.png",
-      contentType: headshot.type || "image/png",
+      contentType: imageType,
       size: headshot.size,
       approval: "approved",
       uploadedBy: user.id,
@@ -133,7 +136,7 @@ export default function PortalProfile({ loaderData, actionData }: Route.Componen
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
                 {headshotUploadId ? (
                   <img
-                    src={`/files/${headshotUploadId}?inline=1`}
+                    src={`/files/${headshotUploadId}/image`}
                     alt={`Headshot of ${profile.firstName} ${profile.lastName}`.trim()}
                     className="h-full w-full object-cover"
                   />
@@ -145,13 +148,13 @@ export default function PortalProfile({ loaderData, actionData }: Route.Componen
                 <Field
                   label="Headshot"
                   name="headshot"
-                  help="PNG, JPEG, or WebP, up to 5 MB. A square photo at least 800px wide works best."
+                  help="PNG, JPEG, WebP, or GIF, up to 5 MB. A square photo at least 800px wide works best."
                 >
                   <input
                     id="headshot"
                     name="headshot"
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept={RASTER_ACCEPT}
                     className="block w-full text-sm text-slate-900 file:mr-3 file:h-9 file:rounded-md file:border file:border-slate-200 file:bg-white file:px-3 file:text-sm file:font-medium file:text-slate-900"
                   />
                 </Field>

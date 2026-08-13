@@ -12,8 +12,13 @@ import { buildZip, zipPath, zipResponse } from "../lib/zip.server";
 import { events, fileUploads } from "../../database/schema";
 
 /** Refuses rather than dying halfway. A Worker that runs out of memory answers 503,
- *  which tells the organizer nothing; this tells them to narrow the export. */
-const MAX_ARCHIVE_BYTES = 90 * 1024 * 1024;
+ *  which tells the organizer nothing; this tells them to narrow the export.
+ *
+ *  Well under half the 128 MB isolate limit, because the archive costs roughly twice
+ *  its own size while it is built: every input buffer is still held when zipSync
+ *  allocates the store-only output. 90 MB of inputs was a limit the runtime would
+ *  never actually honour. */
+const MAX_ARCHIVE_BYTES = 45 * 1024 * 1024;
 
 /** Collapses versions: one row per deliverable, the newest of the rows given. Every
  *  caller passes rows it already decided are eligible, so this never reaches past

@@ -81,8 +81,17 @@ export async function action({ request, params }: Route.ActionArgs) {
         ? current.filter((id) => id !== sessionId)
         : current;
 
-  // Only ever bounce back inside this app.
-  const safeReturn = returnTo.startsWith("/") ? returnTo : `/embed/v1/${all.event.slug}/itinerary`;
+  // Only ever bounce back inside this app. "/" alone is not enough: "//attacker.example"
+  // is a scheme-relative URL, and browsers normalize backslashes to forward slashes,
+  // so "/\\attacker.example" reaches the same place. Resolve against this request's
+  // own origin and require the result to still be on it.
+  const fallback = `/embed/v1/${all.event.slug}/itinerary`;
+  const safeReturn = (() => {
+    if (!returnTo.startsWith("/") || returnTo.startsWith("//") || returnTo.includes("\\")) return fallback;
+    const origin = new URL(request.url).origin;
+    const resolved = new URL(returnTo, origin);
+    return resolved.origin === origin ? `${resolved.pathname}${resolved.search}${resolved.hash}` : fallback;
+  })();
   return redirect(safeReturn, { headers: { "Set-Cookie": itinerarySetCookie(all.event.id, next) } });
 }
 

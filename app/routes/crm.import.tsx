@@ -21,7 +21,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
 
@@ -46,7 +46,7 @@ export async function action({ request }: Route.ActionArgs) {
     const table = parseCsv(csv);
     if (table.length < 2) return { error: "Nothing to import.", preview: null, csv: null, notice: null };
     const preview = await previewImport(0, table);
-    const result = await applyImport(0, preview);
+    const result = await applyImport(0, preview, user.id);
     return {
       error: null,
       preview: null,

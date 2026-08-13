@@ -64,6 +64,13 @@ export function requireOrganizer(request: Request): Promise<CurrentUser> {
   return requireRole(request, ["admin", "organizer"]);
 }
 
+/** Installation-wide settings, not one event's. Signup hands out the organizer role
+ *  to anyone who asks, so anything whose blast radius is the whole instance
+ *  (integration credentials, the featured event) is an admin decision. */
+export function requireAdmin(request: Request): Promise<CurrentUser> {
+  return requireRole(request, ["admin"]);
+}
+
 /** The role from the signed cookie, with no database round trip. Public pages use
  *  this to decide between a "Sign in" link and a link back into the app; they must
  *  not pay for a user lookup on a page most visitors read logged out. */
