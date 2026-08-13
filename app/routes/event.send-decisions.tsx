@@ -10,6 +10,7 @@ import type { Route } from "./+types/event.send-decisions";
 import { appBaseUrl, bindings, getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { renderTemplate, renderTemplateHtml, sendEmail } from "../lib/email";
+import { emailButton } from "../lib/email-layout";
 import { buildIcs } from "../lib/ics";
 import { contacts, events, sessionParticipants, sessions, statuses } from "../../database/schema";
 import { Breadcrumbs, Card, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, textareaClass } from "../components/ui";
@@ -192,6 +193,10 @@ export async function action({ request, params }: Route.ActionArgs) {
       event_name: event.name,
       status: finalStatus.label,
       portal_url: `${appBaseUrl()}/portal`,
+      // The same prebuilt fragment every other send path uses, and one of the two
+      // merge values email.ts leaves unescaped. Without it the default acceptance
+      // template printed the tag itself.
+      portal_button: emailButton(`${appBaseUrl()}/portal`, "Open your speaker portal"),
       // Raw: renderTemplateHtml escapes it and keeps the line breaks.
       feedback: feedbackRaw,
     };
