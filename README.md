@@ -5,6 +5,9 @@ management system conferences use to run a call for papers, review abstracts, bu
 an agenda, and manage speakers. It was built solo over a weekend for swyx's Kill My
 SaaS competition. Live at https://opensession.opensession.workers.dev.
 
+It includes built-in blind peer review, which the lighter CFP tools lack, without the
+enterprise per-module pricing.
+
 ## Scored results
 
 The sbek eval kit scores 96 rubric items across seven areas. An LLM browser agent
@@ -61,7 +64,8 @@ to a deterministic greedy packer when no model is available, a speaker portal wi
 tasks and versioned file requests, five public embed widgets plus JSON and iCal
 feeds, an organization-level speaker CRM that spans events, a public REST API with
 token auth, two-way Airtable sync, Brevo email with a full in-app send log, and
-automated task reminders on a cron.
+automated task reminders on a cron. Rejected speakers can be sent specific feedback
+with their decline email, written per submission from the decline queue.
 
 ## Requirement to screen map
 

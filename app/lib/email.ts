@@ -151,8 +151,14 @@ export async function queueEmail(env: EmailEnv, mail: OutgoingEmail): Promise<nu
 
 // Merge tags: {speaker_name}, {first_name}, {talk_title}, {event_name}, {status},
 // {portal_url}, {task_list}, {due_date}
+//
+// Optional blocks: {#tag}...{/tag} keeps its contents only when vars[tag] is a
+// non-empty string, otherwise the whole block (tag markers included) disappears.
+// Used for content like decline feedback, where an empty value must not leave a
+// stray paragraph or a literal {tag} behind.
 export function renderTemplate(body: string, vars: Record<string, string>): string {
-  return body.replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? `{${k}}`);
+  const withBlocks = body.replace(/\{#(\w+)\}([\s\S]*?)\{\/\1\}/g, (_, key: string, inner: string) => (vars[key] ? inner : ""));
+  return withBlocks.replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? `{${k}}`);
 }
 
 export const MERGE_TAG_HELP =

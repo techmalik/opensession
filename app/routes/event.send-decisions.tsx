@@ -3,12 +3,13 @@
 // Accepted, stamps decisionEmailSentAt, and converts the abstract into a session.
 // Acceptance emails carry an .ics for the event dates.
 
+import { useState } from "react";
 import { Form, Link } from "react-router";
 import { and, asc, eq, isNull, or } from "drizzle-orm";
 import type { Route } from "./+types/event.send-decisions";
 import { appBaseUrl, bindings, getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
-import { renderTemplate, sendEmail } from "../lib/email";
+import { escapeHtml, renderTemplate, sendEmail } from "../lib/email";
 import { buildIcs } from "../lib/ics";
 import { contacts, events, sessionParticipants, sessions, statuses } from "../../database/schema";
 import { Breadcrumbs, Card, Field, PageHeader, buttonPrimary, buttonSecondary, inputClass, textareaClass } from "../components/ui";
@@ -179,12 +180,19 @@ export async function action({ request, params }: Route.ActionArgs) {
   const now = new Date();
   const sent: { title: string; email: string; status: string }[] = [];
   for (const recipient of recipients) {
+    // Decline feedback is optional and per submission: typed in the recipient list
+    // below, plain text, stored on the session record for the audit trail. Empty by
+    // default; renderTemplate drops the {feedback} tag and its paragraph when unset.
+    const feedbackRaw =
+      queue === "decline_queue" ? String(form.get(`feedback_${recipient.sessionId}`) ?? "").trim() : "";
+
     const vars = {
       speaker_name: recipient.speakerName,
       talk_title: recipient.title,
       event_name: event.name,
       status: finalStatus.label,
       portal_url: `${appBaseUrl()}/portal`,
+      feedback: feedbackRaw ? escapeHtml(feedbackRaw).replace(/\n/g, "<br>") : "",
     };
     const result = await sendEmail(bindings, {
       eventId,
@@ -204,6 +212,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         decisionEmailSentAt: now,
         isAbstract: queue === "accept_queue" ? false : true,
         updatedAt: now,
+        ...(queue === "decline_queue" ? { declineFeedback: feedbackRaw || null } : {}),
       })
       .where(eq(sessions.id, recipient.sessionId));
 
@@ -223,6 +232,12 @@ export default function SendDecisions({ loaderData, actionData, params }: Route.
   const { event, queue, acceptCount, declineCount, recipients, template } = loaderData;
 
   const sent = actionData && "sent" in actionData ? actionData.sent : null;
+
+  // Declared before the early returns below: this component has branches that
+  // return before reaching the compose form, and hooks cannot be called
+  // conditionally, so this has to run on every render regardless of which
+  // branch renders.
+  const [feedback, setFeedback] = useState<Record<number, string>>({});
 
   if (sent) {
     return (
@@ -313,6 +328,7 @@ export default function SendDecisions({ loaderData, actionData, params }: Route.
       <div className="grid max-w-[960px] gap-4 lg:grid-cols-[1fr_340px] [&>*]:min-w-0">
         <Card className="p-4">
           <Form
+            id="decision-form"
             method="post"
             className="space-y-4"
             onSubmit={(e) => {
@@ -322,7 +338,12 @@ export default function SendDecisions({ loaderData, actionData, params }: Route.
             }}
           >
             <input type="hidden" name="queue" value={queue} />
-            <Field label="Subject" name="subject" required help="Merge tags: {speaker_name}, {talk_title}, {event_name}, {status}, {portal_url}.">
+            <Field
+              label="Subject"
+              name="subject"
+              required
+              help={`Merge tags: {speaker_name}, {talk_title}, {event_name}, {status}, {portal_url}${isAccept ? "" : ", {feedback}"}.`}
+            >
               <input id="subject" name="subject" defaultValue={template?.subject ?? ""} className={inputClass} required />
             </Field>
             <Field label="Body" name="body" required>
@@ -342,14 +363,47 @@ export default function SendDecisions({ loaderData, actionData, params }: Route.
             <p className="px-4 py-4 text-sm text-slate-500">Nothing waiting for this email.</p>
           ) : (
             <ul className="max-h-[420px] divide-y divide-slate-100 overflow-y-auto">
-              {recipients.map((recipient) => (
-                <li key={recipient.sessionId} className="px-4 py-2.5">
-                  <p className="text-sm font-medium text-slate-900">{recipient.title}</p>
-                  <p className="text-[13px] text-slate-500">
-                    {recipient.speakerName}, {recipient.speakerEmail}
-                  </p>
-                </li>
-              ))}
+              {recipients.map((recipient) => {
+                const note = (feedback[recipient.sessionId] ?? "").trim();
+                return (
+                  <li key={recipient.sessionId} className="space-y-2 px-4 py-2.5">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{recipient.title}</p>
+                      <p className="text-[13px] text-slate-500">
+                        {recipient.speakerName}, {recipient.speakerEmail}
+                      </p>
+                    </div>
+                    {isAccept ? null : (
+                      <div className="space-y-1">
+                        <label htmlFor={`feedback-${recipient.sessionId}`} className="block text-[13px] font-medium text-slate-700">
+                          Feedback to speaker (optional)
+                        </label>
+                        <textarea
+                          id={`feedback-${recipient.sessionId}`}
+                          name={`feedback_${recipient.sessionId}`}
+                          form="decision-form"
+                          rows={2}
+                          value={feedback[recipient.sessionId] ?? ""}
+                          onChange={(e) =>
+                            setFeedback((prev) => ({ ...prev, [recipient.sessionId]: e.target.value }))
+                          }
+                          placeholder="Left blank, this email has no feedback paragraph."
+                          className={textareaClass}
+                        />
+                        <p className="text-[13px] text-slate-500">
+                          {note ? (
+                            <>
+                              Preview: <span className="text-slate-700">{note}</span>
+                            </>
+                          ) : (
+                            "No feedback written. That paragraph is left out of this email."
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Card>

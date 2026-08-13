@@ -296,6 +296,8 @@ export const sessions = sqliteTable(
     videoUrl: text("video_url"),
     answersJson: text("answers_json").notNull().default("{}"), // custom field answers keyed by fieldKey
     decisionEmailSentAt: integer("decision_email_sent_at", { mode: "timestamp" }),
+    // Optional, organizer-written, decline emails only. Nullable: most declines carry none.
+    declineFeedback: text("decline_feedback"),
     submittedAt: integer("submitted_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),

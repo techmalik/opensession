@@ -30,7 +30,7 @@ const BUILT_IN: Record<string, TemplateBody> = {
     name: "Decline",
     subject: "Update on your {event_name} proposal",
     body:
-      '<p>Hi {speaker_name},</p><p>Thank you for submitting "{talk_title}". We are not able to include it this year. We would love to see you at the event.</p>',
+      '<p>Hi {speaker_name},</p><p>Thank you for submitting "{talk_title}". We are not able to include it this year. We would love to see you at the event.</p>{#feedback}<p>{feedback}</p>{/feedback}',
   },
   cfp_reminder: {
     key: "cfp_reminder",
@@ -231,6 +231,7 @@ export const MERGE_TAGS: { tag: string; meaning: string }[] = [
   { tag: "{portal_url}", meaning: "Plain link to the speaker portal" },
   { tag: "{portal_button}", meaning: "The portal link as a styled button" },
   { tag: "{task_list}", meaning: "Outstanding tasks and files, as an HTML list" },
+  { tag: "{feedback}", meaning: "Decline feedback for this speaker; the tag and its paragraph disappear when left blank. Decline emails only." },
   { tag: "{session_time}", meaning: "Scheduled start, schedule notices only" },
   { tag: "{room_name}", meaning: "Room, schedule notices only" },
   { tag: "{form_name}", meaning: "Form name, CFP reminders only" },
