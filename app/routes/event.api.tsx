@@ -48,7 +48,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const db = getDb();
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
@@ -57,7 +57,12 @@ export async function action({ request }: Route.ActionArgs) {
     const name = String(form.get("name") ?? "").trim();
     if (!name) return { error: "Name the token after whatever will use it.", notice: null, token: null };
     const token = newToken();
-    await db.insert(apiTokens).values({ name, tokenHash: await hashToken(token), createdAt: new Date() });
+    // createdBy is what scopes the MCP server: over /mcp a token reaches only the
+    // events its creator can open. The REST endpoints are unchanged and stay
+    // installation-wide.
+    await db
+      .insert(apiTokens)
+      .values({ name, tokenHash: await hashToken(token), createdBy: user.id, createdAt: new Date() });
     return { error: null, notice: null, token };
   }
 
@@ -79,7 +84,7 @@ export default function ApiTokensScreen({ loaderData, actionData, params }: Rout
     <>
       <PageHeader
         title="API"
-        description="Tokens for the public API. Every token can read and write every event on this installation."
+        description="Tokens for the public API and the MCP server. On /api/v1 a token reads and writes every event on this installation; over MCP it reaches only the events its creator can open."
       />
       <SubNav
         items={[

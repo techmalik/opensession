@@ -105,6 +105,17 @@ client bundle carries only what interaction needs.
 - **Widgets**: server-rendered HTML with zero client JavaScript, served with
   `Content-Security-Policy: frame-ancestors *`, so they embed on any site.
 
+## MCP
+
+An MCP server at `/mcp` lets an AI agent run the conference program directly: it
+speaks the streamable HTTP transport over JSON-RPC 2.0 and wraps the same `/api/v1`
+layer, authenticated with the same API token as an `x-access-token` or
+`Authorization: Bearer` header. Eleven tools cover events, session search and
+editing, speakers, the submission queues, accept and decline, the agenda, and
+outstanding speaker tasks; a token reaches only the events the organizer who created
+it can open. Copy-paste config for Claude Code and Codex is on
+[/docs/api](https://opensession.opensession.workers.dev/docs/api).
+
 ## Self-hosting
 
 A Cloudflare free plan is enough: no Queues, no Durable Objects, no paid bindings.

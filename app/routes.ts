@@ -67,6 +67,9 @@ export default [
 
   route("docs/api", "routes/docs.api.tsx"),
 
+  // MCP server. Same API tokens, JSON-RPC over one POST. See app/lib/mcp.server.ts.
+  route("mcp", "routes/mcp.tsx"),
+
   // Public API. Token auth via x-access-token, JSON in and out, no session cookie.
   route("api/v1/events", "routes/api.events.tsx"),
   route("api/v1/event/:eventId", "routes/api.event.tsx"),

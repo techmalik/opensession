@@ -117,6 +117,22 @@ const ENDPOINTS: Endpoint[] = [
   },
 ];
 
+// The MCP tool list, kept next to the endpoint list it wraps. Every tool here is
+// registered in app/lib/mcp-tools.server.ts; if one is added there, add its row.
+const MCP_TOOLS: { name: string; description: string }[] = [
+  { name: "list_events", description: "Events this token can reach. Start here: it returns the eventId every other tool needs." },
+  { name: "search_sessions", description: "Search sessions by free text, status, track, format, room, and scheduled state." },
+  { name: "get_session", description: "One session with speakers, status, track, format, room, and schedule." },
+  { name: "update_session", description: "Change title, abstract, status, track, room, or start and end time." },
+  { name: "list_speakers", description: "The speaker roster with confirmation status and task and file counts." },
+  { name: "get_speaker", description: "One speaker with bio, sessions, and outstanding work." },
+  { name: "list_submissions_by_status", description: "The submissions queue for one status, with review score averages." },
+  { name: "accept_submission", description: "Set a submission to Accepted, or to the Accept Queue with queue: true." },
+  { name: "decline_submission", description: "Set a submission to Declined, with optional feedback stored on the record." },
+  { name: "get_agenda", description: "Rooms, days, scheduled and unscheduled sessions, and the double-booking conflicts." },
+  { name: "list_open_tasks", description: "Speaker tasks and file requests still outstanding, marked todo or overdue." },
+];
+
 function Block({ children }: { children: string }) {
   return (
     <pre className="mt-2 overflow-x-auto rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-900">
@@ -137,7 +153,11 @@ export default function ApiDocs({ loaderData }: Route.ComponentProps) {
         <p className="mt-2 text-base leading-relaxed text-slate-500">
           A JSON API under <code className="font-mono text-[15px]">/api/v1</code>, authenticated with an{" "}
           <code className="font-mono text-[15px]">x-access-token</code> header. No cookie, no session: a token is the whole
-          credential.
+          credential. The same token also opens the{" "}
+          <a href="#mcp" className="font-medium text-accent hover:underline">
+            MCP server
+          </a>{" "}
+          at <code className="font-mono text-[15px]">/mcp</code>.
         </p>
 
         <section className="mt-8">
@@ -195,6 +215,63 @@ export default function ApiDocs({ loaderData }: Route.ComponentProps) {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section id="mcp" className="mt-10">
+          <h2 className="text-base font-semibold text-slate-900">MCP server</h2>
+          <p className="mt-1 text-base leading-relaxed text-slate-900">
+            The same data over the Model Context Protocol, so an AI agent can run the conference program directly.
+            Streamable HTTP transport at <code className="font-mono text-[15px]">{`${baseUrl}/mcp`}</code>, JSON-RPC 2.0
+            over a single POST. Every tool wraps the endpoints above; nothing here can do more than a token can do.
+          </p>
+          <p className="mt-2 text-base leading-relaxed text-slate-900">
+            Authenticate with the same token, as an{" "}
+            <code className="font-mono text-[15px]">x-access-token</code> header or as{" "}
+            <code className="font-mono text-[15px]">Authorization: Bearer</code>. A request with neither gets a JSON-RPC
+            error saying where to make one. Tools reach only the events the organizer who created the token can open,
+            which is narrower than the REST endpoints above.
+          </p>
+          <Block>{`curl -X POST -H "x-access-token: $TOKEN" -H "content-type: application/json" \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}' \\
+  "${baseUrl}/mcp"`}</Block>
+
+          <h3 className="mt-6 text-[15px] font-semibold text-slate-900">Tools</h3>
+          <ul className="mt-3 space-y-2">
+            {MCP_TOOLS.map((tool) => (
+              <li key={tool.name} className="border-t border-slate-200 pt-2">
+                <code className="font-mono text-[15px] text-slate-900">{tool.name}</code>
+                <p className="mt-0.5 text-base leading-relaxed text-slate-500">{tool.description}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-base leading-relaxed text-slate-900">
+            Decision tools change status only. Sending acceptance and decline email stays the explicit step under
+            Communications, Send decisions, which is where the templates and the calendar attachment live.
+          </p>
+
+          <h3 className="mt-6 text-[15px] font-semibold text-slate-900">Claude Code</h3>
+          <p className="mt-1 text-base leading-relaxed text-slate-900">
+            One command, or the JSON block if you would rather edit the file.
+          </p>
+          <Block>{`claude mcp add --transport http opensession ${baseUrl}/mcp \\
+  --header "x-access-token: $TOKEN"`}</Block>
+          <Block>{`{
+  "mcpServers": {
+    "opensession": {
+      "type": "http",
+      "url": "${baseUrl}/mcp",
+      "headers": { "x-access-token": "osk_..." }
+    }
+  }
+}`}</Block>
+
+          <h3 className="mt-6 text-[15px] font-semibold text-slate-900">Codex</h3>
+          <p className="mt-1 text-base leading-relaxed text-slate-900">
+            Add this to <code className="font-mono text-[15px]">~/.codex/config.toml</code>.
+          </p>
+          <Block>{`[mcp_servers.opensession]
+url = "${baseUrl}/mcp"
+http_headers = { "x-access-token" = "osk_..." }`}</Block>
         </section>
 
         <nav className="mt-10 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-200 pt-6 text-base">

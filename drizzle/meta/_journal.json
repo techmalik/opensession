@@ -71,6 +71,13 @@
       "when": 1786614081892,
       "tag": "0009_post_submission_additions",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1786625897733,
+      "tag": "0010_add_api_token_creator",
+      "breakpoints": true
     }
   ]
 }

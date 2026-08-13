@@ -636,6 +636,10 @@ export const apiTokens = sqliteTable("api_tokens", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   tokenHash: text("token_hash").notNull(),
+  // The organizer who created the token. Null on tokens minted before the column
+  // existed; the MCP server reads it to scope a token to the events its creator can
+  // open, and falls back to the API's installation-wide reach when it is null.
+  createdBy: integer("created_by"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
 });
