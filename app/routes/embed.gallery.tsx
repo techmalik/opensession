@@ -5,6 +5,7 @@
 import { data } from "react-router";
 import type { Route } from "./+types/embed.gallery";
 import { filterSpeakers, loadPublicData, publicCacheHeaders } from "../lib/public.server";
+import { readBranding } from "../lib/embed-view";
 import { Avatar, EmbedSearch, EmbedShell, EmptyPublic, ShowMore, embedLink } from "../components/embed";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -28,6 +29,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return data(
     {
       event: all.event,
+      branding: readBranding(url.searchParams),
       speakers: filterSpeakers(all.speakers, q),
       total: all.speakers.length,
       q,
@@ -38,12 +40,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export default function GalleryWidget({ loaderData }: Route.ComponentProps) {
-  const { event, speakers, total, q, detail } = loaderData;
+  const { event, speakers, total, q, detail, branding } = loaderData;
   const base = `/embed/v1/${event.slug}/gallery`;
 
   if (detail) {
     return (
-      <EmbedShell event={event} current="gallery" heading={detail.name}>
+      <EmbedShell branding={branding} event={event} current="gallery" heading={detail.name}>
         <p className="mt-2">
           <a href={base} className={embedLink}>
             Back to the gallery
@@ -80,7 +82,7 @@ export default function GalleryWidget({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <EmbedShell event={event} current="gallery" heading="Speakers">
+    <EmbedShell branding={branding} event={event} current="gallery" heading="Speakers">
       <EmbedSearch
         action={base}
         placeholder="Search speaker by name"

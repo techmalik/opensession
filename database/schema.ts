@@ -430,7 +430,9 @@ export const evalScores = sqliteTable(
   (t) => [index("eval_scores_assignment_idx").on(t.assignmentId)]
 );
 
-// AI evaluator personas produce reviews too; kept separate from human scores
+// AI evaluator personas produce reviews too; kept separate from human scores.
+// An organizer may override a persona's score: the original stays in `score` so the
+// panel can show what the model said next to what the human decided.
 export const aiReviews = sqliteTable("ai_reviews", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   sessionId: integer("session_id").notNull(),
@@ -438,6 +440,10 @@ export const aiReviews = sqliteTable("ai_reviews", {
   score: integer("score").notNull(),
   reviewText: text("review_text").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  overrideScore: integer("override_score"),
+  overrideReason: text("override_reason"),
+  overrideBy: text("override_by"),
+  overrideAt: integer("override_at", { mode: "timestamp" }),
 });
 
 // ---------- Speaker portal: tasks ----------
@@ -640,3 +646,32 @@ export const settings = sqliteTable("settings", {
   valueJson: text("value_json").notNull().default("{}"),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
+
+// ---------- Saved embeds ----------
+// A named, reusable widget configuration. The snippet points at
+// /embed/v1/:slug/saved/:id, so switching `enabled` off empties every page that
+// already pasted the snippet without anyone editing their HTML.
+export const savedEmbeds = sqliteTable("saved_embeds", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  eventId: integer("event_id").notNull(),
+  name: text("name").notNull(),
+  widgetType: text("widget_type").notNull(),
+  // { track, format, height, accent, header } as stored by the Embeds configurator
+  configJson: text("config_json").notNull().default("{}"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ---------- Per-user UI flags ----------
+// One row per (user, flag). Dismissing the getting-started card writes a row here
+// rather than a cookie, so the dismissal follows the account across browsers.
+export const userFlags = sqliteTable(
+  "user_flags",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id").notNull(),
+    flag: text("flag").notNull(),
+    setAt: integer("set_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [uniqueIndex("user_flags_uq").on(t.userId, t.flag)]
+);

@@ -6,6 +6,7 @@
 import { data, redirect } from "react-router";
 import type { Route } from "./+types/embed.itinerary";
 import { filterSessions, groupByDay, loadPublicData, readFilters } from "../lib/public.server";
+import { readBranding } from "../lib/embed-view";
 import { itinerarySetCookie, readItinerary } from "../lib/itinerary.server";
 import {
   EmbedSearch,
@@ -45,6 +46,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   return data({
     event: all.event,
+    branding: readBranding(url.searchParams),
     days: groupByDay(sessions, all.days).map((group) => ({
       ...group,
       slots: [...new Set(group.sessions.map((session) => session.startLabel))].map((label) => ({
@@ -85,12 +87,12 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function ItineraryWidget({ loaderData }: Route.ComponentProps) {
-  const { event, days, filters, mine, picked, total, shown, tracks, formats, rooms } = loaderData;
+  const { event, days, filters, mine, picked, total, shown, tracks, formats, rooms, branding } = loaderData;
   const base = `/embed/v1/${event.slug}/itinerary`;
   const returnTo = `${base}${mine ? "?mine=1" : ""}`;
 
   return (
-    <EmbedShell event={event} current="itinerary" heading={mine ? "My schedule" : "Itinerary"}>
+    <EmbedShell branding={branding} event={event} current="itinerary" heading={mine ? "My schedule" : "Itinerary"}>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <a
           href={base}

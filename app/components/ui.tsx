@@ -408,3 +408,66 @@ export function PublicHeader({
     </header>
   );
 }
+
+/** The "Getting started" card. A quiet checklist, not a tour: it sits at the top of
+ *  the page, pushes nothing around, opens nothing on its own, and the X removes it
+ *  for this account for good. Callers decide whether it renders at all
+ *  (app/lib/onboarding.server.ts owns that rule). */
+export function GettingStarted({
+  title,
+  description,
+  items,
+  intent,
+}: {
+  title: string;
+  description: string;
+  items: { label: string; to: string; done: boolean }[];
+  intent: string;
+}) {
+  const remaining = items.filter((item) => !item.done).length;
+
+  return (
+    <Card className="mb-4 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+          <p className="mt-0.5 text-[13px] text-slate-500">
+            {description} {remaining === 0 ? "All done." : `${remaining} left.`}
+          </p>
+        </div>
+        <Form method="post">
+          <button
+            type="submit"
+            name="intent"
+            value={intent}
+            aria-label="Dismiss getting started"
+            title="Dismiss for good"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-900"
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" strokeLinecap="round" />
+            </svg>
+          </button>
+        </Form>
+      </div>
+
+      <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5">
+        {items.map((item) => (
+          <li key={item.label} className="flex items-center gap-2 text-[13px]">
+            {item.done ? (
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" className="shrink-0 text-accent">
+                <path d="M3 8.5l3.5 3.5L13 4.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <span aria-hidden="true" className="h-[14px] w-[14px] shrink-0 rounded-full border border-slate-300" />
+            )}
+            <Link to={item.to} className={item.done ? "text-slate-500 hover:underline" : "font-medium text-accent hover:underline"}>
+              {item.label}
+            </Link>
+            <span className="sr-only">{item.done ? "done" : "not done yet"}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}

@@ -6,6 +6,7 @@
 import { data } from "react-router";
 import type { Route } from "./+types/embed.agenda";
 import { loadPublicData, publicCacheHeaders } from "../lib/public.server";
+import { readBranding } from "../lib/embed-view";
 import { EmbedShell, EmptyPublic, SessionTags, ShowMore, SpeakerLine, embedLink } from "../components/embed";
 
 const ROW_PX = 26; // one 15-minute row
@@ -53,6 +54,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return data(
     {
       event: all.event,
+      branding: readBranding(url.searchParams),
       days,
       day,
       dayLabel: days[index]?.label ?? "",
@@ -72,12 +74,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export default function AgendaWidget({ loaderData }: Route.ComponentProps) {
-  const { event, days, day, dayLabel, prevDay, nextDay, rooms, sessions, gridRows, gridFrom, detail } = loaderData;
+  const { event, days, day, dayLabel, prevDay, nextDay, rooms, sessions, gridRows, gridFrom, detail, branding } = loaderData;
   const base = `/embed/v1/${event.slug}/agenda`;
 
   if (detail) {
     return (
-      <EmbedShell event={event} current="agenda" heading={detail.title} wide>
+      <EmbedShell branding={branding} event={event} current="agenda" heading={detail.title} wide>
         <p className="mt-1 text-base text-slate-500">{detail.whenLabel}</p>
         <p className="text-base text-slate-500">{detail.roomName}</p>
         <SessionTags session={detail} />
@@ -104,7 +106,7 @@ export default function AgendaWidget({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <EmbedShell event={event} current="agenda" heading="Agenda" wide>
+    <EmbedShell branding={branding} event={event} current="agenda" heading="Agenda" wide>
       {days.length === 0 ? (
         <EmptyPublic message="No sessions have been scheduled yet." />
       ) : (

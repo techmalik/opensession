@@ -19,10 +19,17 @@ export interface AiReviewRow {
   sessionId: number;
   persona: string;
   personaLabel: string;
+  /** What the model (or the heuristic) actually said. Never overwritten. */
   score: number;
   reviewText: string;
   source: AssistSource;
   createdAt: Date;
+  overrideScore: number | null;
+  overrideReason: string | null;
+  overrideBy: string | null;
+  overrideAt: Date | null;
+  /** The number every average uses: the override when there is one. */
+  effectiveScore: number;
 }
 
 interface AiBinding {
@@ -207,7 +214,8 @@ export interface RunResult {
 }
 
 /** Runs all three personas over one submission, replacing any previous AI pass so
- *  the panel never stacks up duplicates from repeated clicks. */
+ *  the panel never stacks up duplicates from repeated clicks. A re-run is a fresh
+ *  pass, so any overrides on the previous pass go with it. */
 export async function runAiReview(eventId: number, sessionId: number): Promise<RunResult | null> {
   const submission = await loadSubmission(eventId, sessionId);
   if (!submission) return null;
@@ -277,8 +285,62 @@ export async function listAiReviews(sessionId: number): Promise<AiReviewRow[]> {
       reviewText: row.reviewText,
       source,
       createdAt: row.createdAt,
+      overrideScore: row.overrideScore,
+      overrideReason: row.overrideReason,
+      overrideBy: row.overrideBy,
+      overrideAt: row.overrideAt,
+      effectiveScore: row.overrideScore ?? row.score,
     };
   });
+}
+
+/** ABS-14: an organizer replaces one persona's score with their own judgement.
+ *  The model's number stays in the row, so the panel shows both and the reason the
+ *  human gave. Human evaluation aggregates are a different table entirely and are
+ *  untouched by this. */
+export async function setAiReviewOverride(
+  sessionId: number,
+  reviewId: number,
+  score: number,
+  reason: string,
+  by: string
+): Promise<boolean> {
+  if (!Number.isInteger(score) || score < 1 || score > 5) return false;
+  const db = getDb();
+  // Scoped to the session so a reviewId from another submission cannot be edited.
+  const row = await db
+    .select({ id: aiReviews.id })
+    .from(aiReviews)
+    .where(and(eq(aiReviews.id, reviewId), eq(aiReviews.sessionId, sessionId)))
+    .get();
+  if (!row) return false;
+
+  await db
+    .update(aiReviews)
+    .set({
+      overrideScore: score,
+      overrideReason: reason.trim().slice(0, 200) || null,
+      overrideBy: by,
+      overrideAt: new Date(),
+    })
+    .where(eq(aiReviews.id, row.id));
+  return true;
+}
+
+export async function clearAiReviewOverride(sessionId: number, reviewId: number): Promise<boolean> {
+  const db = getDb();
+  const row = await db
+    .select({ id: aiReviews.id })
+    .from(aiReviews)
+    .where(and(eq(aiReviews.id, reviewId), eq(aiReviews.sessionId, sessionId)))
+    .get();
+  if (!row) return false;
+
+  await db
+    .update(aiReviews)
+    .set({ overrideScore: null, overrideReason: null, overrideBy: null, overrideAt: null })
+    .where(eq(aiReviews.id, row.id));
+  return true;
 }
 
 /** AI averages for the submissions table, kept in their own column so nobody can
@@ -293,7 +355,9 @@ export async function aiScoreMap(sessionIds: number[]): Promise<Map<number, { av
     const mine = rows.filter((row) => row.sessionId === sessionId);
     if (mine.length === 0) continue;
     result.set(sessionId, {
-      avg: mine.reduce((sum, row) => sum + row.score, 0) / mine.length,
+      // Overrides win here too, so the submissions table and the detail panel
+      // never disagree about the AI average.
+      avg: mine.reduce((sum, row) => sum + (row.overrideScore ?? row.score), 0) / mine.length,
       count: mine.length,
     });
   }

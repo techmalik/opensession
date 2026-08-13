@@ -102,6 +102,8 @@ const WIDE_ROUTES = new Set([
   "routes/event.content.review",
   "routes/event.plan.results",
   "routes/event.agenda.assist",
+  // The saved embeds table carries snippet columns; 960px puts it into a scroll.
+  "routes/event.embeds",
 ]);
 
 export default function EventShell({ loaderData }: Route.ComponentProps) {

@@ -8,7 +8,13 @@ import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { getFields, withColumnFallbacks, type FieldDef } from "../lib/cfp.server";
 import { ensureBaseRevision, listRevisions, recordRevision, restoreRevision } from "../lib/revisions.server";
-import { clearAiReviews, listAiReviews, runAiReview } from "../lib/ai-reviews.server";
+import {
+  clearAiReviewOverride,
+  clearAiReviews,
+  listAiReviews,
+  runAiReview,
+  setAiReviewOverride,
+} from "../lib/ai-reviews.server";
 import { REVIEW_SOURCE_LABEL } from "../lib/labels";
 import { getCriteria, reviewScore, type CriterionDef } from "../lib/evals.server";
 import { formatBytes, formatDateTime, formatScore } from "../lib/format";
@@ -41,7 +47,9 @@ import {
   buttonPrimary,
   buttonSecondary,
   inputClass,
+  inputSized,
   selectClass,
+  selectSized,
   textareaClass,
 } from "../components/ui";
 
@@ -213,8 +221,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       reviewText: row.reviewText,
       sourceLabel: REVIEW_SOURCE_LABEL[row.source] ?? "Built-in heuristic",
       createdAt: row.createdAt,
+      overrideScore: row.overrideScore,
+      overrideReason: row.overrideReason,
+      overrideBy: row.overrideBy,
+      overrideAt: row.overrideAt,
+      effectiveScore: row.effectiveScore,
     })),
-    aiAvg: aiRows.length > 0 ? aiRows.reduce((sum, row) => sum + row.score, 0) / aiRows.length : null,
+    // ABS-14: the AI average follows the overrides, not the raw model output.
+    aiAvg: aiRows.length > 0 ? aiRows.reduce((sum, row) => sum + row.effectiveScore, 0) / aiRows.length : null,
+    aiOverrides: aiRows.filter((row) => row.overrideScore != null).length,
     revisions: revisions.map((row) => ({
       id: row.id,
       version: row.version,
@@ -334,6 +349,26 @@ export async function action({ request, params }: Route.ActionArgs) {
     return { error: null, notice: "AI reviews cleared." };
   }
 
+  // ABS-14: an organizer's own number for one persona. The model's score stays on
+  // the row; only the AI panel and the AI average move.
+  if (intent === "override-ai-review") {
+    const reviewId = Number(form.get("reviewId") ?? 0);
+    const score = Number(form.get("overrideScore") ?? 0);
+    if (!Number.isInteger(score) || score < 1 || score > 5) {
+      return { error: "An override score has to be a whole number from 1 to 5.", notice: null };
+    }
+    const saved = await setAiReviewOverride(sessionId, reviewId, score, String(form.get("overrideReason") ?? ""), user.name);
+    if (!saved) return { error: "That AI review does not belong to this submission.", notice: null };
+    return { error: null, notice: `Score overridden to ${score} / 5. The AI average now uses it.` };
+  }
+
+  if (intent === "clear-ai-override") {
+    const reviewId = Number(form.get("reviewId") ?? 0);
+    const cleared = await clearAiReviewOverride(sessionId, reviewId);
+    if (!cleared) return { error: "That AI review does not belong to this submission.", notice: null };
+    return { error: null, notice: "Override removed. The original AI score is back in the average." };
+  }
+
   if (intent === "restore-revision") {
     const revisionId = Number(form.get("revisionId") ?? 0);
     const restored = await restoreRevision(eventId, sessionId, revisionId, { id: user.id, name: user.name });
@@ -419,7 +454,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function SubmissionDetail({ loaderData, actionData, params }: Route.ComponentProps) {
-  const { event, session, revisions, aiReviews, aiAvg, fields, answers, statusRows, currentStatus, participants, evaluations, scoreAvg, scoreCount, files } =
+  const { event, session, revisions, aiReviews, aiAvg, aiOverrides, fields, answers, statusRows, currentStatus, participants, evaluations, scoreAvg, scoreCount, files } =
     loaderData;
 
   const sessionFields = fields.filter((f) => f.section === "session");
@@ -548,6 +583,11 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
                 {aiAvg != null ? (
                   <p className="text-[13px] text-slate-500">
                     AI average <span className="font-medium tabular-nums text-slate-900">{formatScore(aiAvg)}</span> / 5
+                    {aiOverrides > 0 ? (
+                      <span className="ml-1">
+                        ({aiOverrides} {aiOverrides === 1 ? "override" : "overrides"} applied)
+                      </span>
+                    ) : null}
                   </p>
                 ) : null}
                 <Form method="post">
@@ -572,9 +612,87 @@ export default function SubmissionDetail({ loaderData, actionData, params }: Rou
                           {review.personaLabel}
                           <span className="ml-2 text-[13px] font-normal text-slate-500">{review.sourceLabel}</span>
                         </p>
-                        <p className="text-sm tabular-nums text-slate-900">{review.score} / 5</p>
+                        <p className="text-sm tabular-nums text-slate-900">
+                          {review.overrideScore != null ? (
+                            <>
+                              {/* The model's own number stays legible next to the human's. */}
+                              <span className="text-slate-500 line-through">{review.score}</span>{" "}
+                              <span className="font-medium">{review.overrideScore} / 5</span>
+                            </>
+                          ) : (
+                            <>{review.score} / 5</>
+                          )}
+                        </p>
                       </div>
                       <p className="mt-1 text-sm text-slate-900">{review.reviewText}</p>
+
+                      {review.overrideScore != null ? (
+                        <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                          <p className="text-[13px] text-slate-900">
+                            <span className="font-medium">Overridden to {review.overrideScore} / 5</span> by{" "}
+                            {review.overrideBy ?? "an organizer"}
+                            {review.overrideAt ? `, ${formatDateTime(review.overrideAt, event.timezone)}` : ""}. AI scored{" "}
+                            {review.score}.
+                          </p>
+                          {review.overrideReason ? (
+                            <p className="mt-0.5 text-[13px] text-slate-500">Reason: {review.overrideReason}</p>
+                          ) : null}
+                          <Form method="post" className="mt-1">
+                            <input type="hidden" name="reviewId" value={review.id} />
+                            <button
+                              type="submit"
+                              name="intent"
+                              value="clear-ai-override"
+                              className="text-[13px] font-medium text-slate-500 hover:text-rose-600"
+                            >
+                              Remove override
+                            </button>
+                          </Form>
+                        </div>
+                      ) : null}
+
+                      <details className="mt-2">
+                        <summary className="inline-flex cursor-pointer list-none items-center text-[13px] font-medium text-accent hover:underline">
+                          {review.overrideScore != null ? "Change override" : "Override"}
+                        </summary>
+                        <Form method="post" className="mt-2 flex flex-wrap items-end gap-2">
+                          <input type="hidden" name="reviewId" value={review.id} />
+                          <div>
+                            <label htmlFor={`override-score-${review.id}`} className="block text-[13px] font-medium text-slate-900">
+                              Score
+                            </label>
+                            <select
+                              id={`override-score-${review.id}`}
+                              name="overrideScore"
+                              defaultValue={String(review.overrideScore ?? review.score)}
+                              className={`${selectSized} mt-1 w-20`}
+                            >
+                              {[1, 2, 3, 4, 5].map((value) => (
+                                <option key={value} value={value}>
+                                  {value}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <label htmlFor={`override-reason-${review.id}`} className="block text-[13px] font-medium text-slate-900">
+                              Reason (optional)
+                            </label>
+                            <input
+                              id={`override-reason-${review.id}`}
+                              name="overrideReason"
+                              type="text"
+                              maxLength={200}
+                              defaultValue={review.overrideReason ?? ""}
+                              placeholder="One line, shown next to the score"
+                              className={`${inputSized} mt-1 w-full`}
+                            />
+                          </div>
+                          <button type="submit" name="intent" value="override-ai-review" className={buttonSecondary}>
+                            Save override
+                          </button>
+                        </Form>
+                      </details>
                     </li>
                   ))}
                 </ul>

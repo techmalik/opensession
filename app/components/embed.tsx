@@ -2,8 +2,18 @@
 // HTML: search and filters are GET forms, expansions are <details>, so every widget
 // works with no JavaScript, inside an iframe, logged out, at 375px.
 
-import type { ReactNode } from "react";
-import { WIDGETS, snippet, type PublicEvent, type PublicSession, type PublicSpeaker, type WidgetKind } from "../lib/embed-view";
+import type { CSSProperties, ReactNode } from "react";
+import {
+  DEFAULT_BRANDING,
+  WIDGETS,
+  isDefaultBranding,
+  snippet,
+  type EmbedBranding,
+  type PublicEvent,
+  type PublicSession,
+  type PublicSpeaker,
+  type WidgetKind,
+} from "../lib/embed-view";
 
 export const embedInput =
   "h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-accent";
@@ -20,45 +30,59 @@ export const embedButtonSecondary =
 export const embedLink = "inline-flex min-h-11 items-center text-base font-medium text-accent hover:underline";
 
 /** Event branding header, cross-links to the other widgets, and the attribution
- *  footer. `wide` gives the agenda grid room to breathe. */
+ *  footer. `wide` gives the agenda grid room to breathe.
+ *
+ *  EMB-15 branding is two CSS custom properties set on this wrapper. Every accent
+ *  utility in a widget compiles to var(--color-accent), so overriding the variable
+ *  here recolors the whole subtree with no script and no extra stylesheet. A default
+ *  branding writes no style attribute at all, so an unparameterised widget URL
+ *  renders the markup it always did. */
 export function EmbedShell({
   event,
   current,
   heading,
   children,
   wide = false,
+  branding = DEFAULT_BRANDING,
 }: {
   event: PublicEvent;
   current: WidgetKind;
   heading: string;
   children: ReactNode;
   wide?: boolean;
+  branding?: EmbedBranding;
 }) {
+  const style = isDefaultBranding(branding)
+    ? undefined
+    : ({ "--color-accent": branding.accent, "--color-accent-hover": branding.accentHover } as CSSProperties);
+
   return (
-    <div className="min-h-screen bg-white">
-      <header className="border-b border-slate-200">
-        <div className={`mx-auto w-full ${wide ? "max-w-[1080px]" : "max-w-[720px]"} px-4 py-6 sm:px-6`}>
-          <p className="text-[13px] font-medium tracking-wide text-slate-500">Public program</p>
-          <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-tight text-slate-900">{event.name}</h1>
-          <p className="mt-1 text-base text-slate-500">
-            {[event.dateRange, event.location].filter(Boolean).join(", ")}
-          </p>
-          <nav aria-label="Widgets" className="-mx-1 mt-4 flex flex-wrap gap-1">
-            {WIDGETS.map((widget) => (
-              <a
-                key={widget.kind}
-                href={`/embed/v1/${event.slug}/${widget.kind}`}
-                aria-current={widget.kind === current ? "page" : undefined}
-                className={`inline-flex h-11 items-center rounded-md px-3 text-base font-medium ${
-                  widget.kind === current ? "bg-slate-50 text-accent" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-              >
-                {widget.label}
-              </a>
-            ))}
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-white" style={style}>
+      {branding.header ? (
+        <header className="border-b border-slate-200">
+          <div className={`mx-auto w-full ${wide ? "max-w-[1080px]" : "max-w-[720px]"} px-4 py-6 sm:px-6`}>
+            <p className="text-[13px] font-medium tracking-wide text-slate-500">Public program</p>
+            <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-tight text-slate-900">{event.name}</h1>
+            <p className="mt-1 text-base text-slate-500">
+              {[event.dateRange, event.location].filter(Boolean).join(", ")}
+            </p>
+            <nav aria-label="Widgets" className="-mx-1 mt-4 flex flex-wrap gap-1">
+              {WIDGETS.map((widget) => (
+                <a
+                  key={widget.kind}
+                  href={`/embed/v1/${event.slug}/${widget.kind}`}
+                  aria-current={widget.kind === current ? "page" : undefined}
+                  className={`inline-flex h-11 items-center rounded-md px-3 text-base font-medium ${
+                    widget.kind === current ? "bg-slate-50 text-accent" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  {widget.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </header>
+      ) : null}
 
       <main className={`mx-auto w-full ${wide ? "max-w-[1080px]" : "max-w-[720px]"} px-4 py-6 sm:px-6`}>
         <h2 className="text-xl font-semibold tracking-tight text-slate-900">{heading}</h2>

@@ -10,12 +10,14 @@ import { requireSpeaker, myFileRequests, myTasks } from "../lib/portal.server";
 import { formOpenState, speakerStatus } from "../lib/cfp.server";
 import { formatDate } from "../lib/format";
 import { ROLE_LABEL } from "../lib/labels";
+import { PORTAL_GETTING_STARTED, portalChecklist, setFlag, shouldShowCard } from "../lib/onboarding.server";
 import { events, forms, sessionParticipants, sessions, statuses } from "../../database/schema";
 import {
   AppBar,
   Card,
   EmptyState,
   ErrorNotice,
+  GettingStarted,
   Notice,
   PortalNav,
   StatusBadge,
@@ -143,8 +145,17 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const tasks = user.contactId ? await myTasks(user.contactId) : [];
   const requests = user.contactId ? await myFileRequests(user.contactId) : [];
+  const openTasks = tasks.filter((task) => !task.done).length;
+  const openFiles = requests.filter((request) => request.latestUploadId == null).length;
+
+  const showGettingStarted = await shouldShowCard(user, PORTAL_GETTING_STARTED);
+  const checklist = showGettingStarted
+    ? await portalChecklist(user.contactId, { tasks: openTasks, files: openFiles })
+    : [];
 
   return {
+    showGettingStarted,
+    checklist,
     user,
     invitations,
     submissions: rows.map((row) => {
@@ -157,16 +168,25 @@ export async function loader({ request }: Route.LoaderArgs) {
       };
     }),
     openForms: openForms.filter((f) => formOpenState(f) === "open"),
-    openTasks: tasks.filter((task) => !task.done).length,
-    openFiles: requests.filter((request) => request.latestUploadId == null).length,
+    openTasks,
+    openFiles,
   };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { contactId } = await requireSpeaker(request);
-  const db = getDb();
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
+
+  // Dismissing the card is not speaker-specific work, so it runs before the
+  // requireSpeaker guard: a signed-in user with no contact record can still do it.
+  if (intent === "dismiss-getting-started") {
+    const user = await requireUser(request);
+    await setFlag(user.id, PORTAL_GETTING_STARTED);
+    return { error: null };
+  }
+
+  const { contactId } = await requireSpeaker(request);
+  const db = getDb();
   const participantId = Number(form.get("participantId") ?? 0);
   if (intent !== "confirm" && intent !== "decline") return { error: null };
 
@@ -187,7 +207,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Portal({ loaderData, actionData }: Route.ComponentProps) {
-  const { user, submissions, openForms, invitations, openTasks, openFiles } = loaderData;
+  const { user, submissions, openForms, invitations, openTasks, openFiles, showGettingStarted, checklist } = loaderData;
 
   const byEvent = new Map<number, typeof submissions>();
   for (const submission of submissions) {
@@ -210,6 +230,15 @@ export default function Portal({ loaderData, actionData }: Route.ComponentProps)
 
         {actionData?.error ? <ErrorNotice>{actionData.error}</ErrorNotice> : null}
         {actionData && "notice" in actionData && actionData.notice ? <Notice>{actionData.notice}</Notice> : null}
+
+        {showGettingStarted ? (
+          <GettingStarted
+            title="Getting started"
+            description="Three things the organizers need from you."
+            items={checklist}
+            intent="dismiss-getting-started"
+          />
+        ) : null}
 
         {openTasks > 0 || openFiles > 0 ? (
           <div className="mb-5 grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">

@@ -4,6 +4,7 @@
 import { data } from "react-router";
 import type { Route } from "./+types/embed.speakers";
 import { filterSpeakers, loadPublicData, publicCacheHeaders } from "../lib/public.server";
+import { readBranding } from "../lib/embed-view";
 import { Avatar, EmbedSearch, EmbedShell, EmptyPublic, ShowMore, embedLink } from "../components/embed";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -27,6 +28,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return data(
     {
       event: all.event,
+      branding: readBranding(url.searchParams),
       speakers: filterSpeakers(all.speakers, q),
       total: all.speakers.length,
       q,
@@ -37,13 +39,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export default function SpeakersWidget({ loaderData }: Route.ComponentProps) {
-  const { event, speakers, total, q, detail } = loaderData;
+  const { event, speakers, total, q, detail, branding } = loaderData;
   const base = `/embed/v1/${event.slug}/speakers`;
   const sessionsBase = `/embed/v1/${event.slug}/sessions`;
 
   if (detail) {
     return (
-      <EmbedShell event={event} current="speakers" heading={detail.name}>
+      <EmbedShell branding={branding} event={event} current="speakers" heading={detail.name}>
         <div className="mt-3 flex items-start gap-4">
           <Avatar speaker={detail} size={96} />
           <div className="min-w-0">
@@ -79,7 +81,7 @@ export default function SpeakersWidget({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <EmbedShell event={event} current="speakers" heading="Speakers">
+    <EmbedShell branding={branding} event={event} current="speakers" heading="Speakers">
       <EmbedSearch
         action={base}
         placeholder="Search speakers and sessions"

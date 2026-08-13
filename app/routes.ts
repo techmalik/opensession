@@ -52,6 +52,7 @@ export default [
   route("embed/v1/:eventSlug/calendar.ics", "routes/embed.ics.tsx"),
   route("embed/v1/:eventSlug/itinerary.ics", "routes/embed.itinerary.ics.tsx"),
   route("embed/v1/:eventSlug/headshot/:contactId", "routes/embed.headshot.tsx"),
+  route("embed/v1/:eventSlug/saved/:savedId", "routes/embed.saved.tsx"),
   route("embed/v1/:eventSlug/embed.js", "routes/embed.script.tsx"),
 
   // Short public aliases the eval agent probes before it knows the slug.

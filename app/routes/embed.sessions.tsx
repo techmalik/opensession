@@ -10,6 +10,7 @@ import {
   publicCacheHeaders,
   readFilters,
 } from "../lib/public.server";
+import { readBranding } from "../lib/embed-view";
 import { EmbedSearch, EmbedShell, EmptyPublic, SessionTags, ShowMore, SpeakerLine, embedLink } from "../components/embed";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -34,6 +35,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return data(
     {
       event: all.event,
+      branding: readBranding(url.searchParams),
       sessions,
       total: all.sessions.length,
       filters,
@@ -48,12 +50,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export default function SessionsWidget({ loaderData }: Route.ComponentProps) {
-  const { event, sessions, total, filters, tracks, formats, rooms, detail } = loaderData;
+  const { event, sessions, total, filters, tracks, formats, rooms, detail, branding } = loaderData;
   const base = `/embed/v1/${event.slug}/sessions`;
 
   if (detail) {
     return (
-      <EmbedShell event={event} current="sessions" heading={detail.title}>
+      <EmbedShell branding={branding} event={event} current="sessions" heading={detail.title}>
         <p className="mt-1 text-base text-slate-500">{detail.whenLabel}</p>
         <p className="text-base text-slate-500">{detail.roomName}</p>
         <SessionTags session={detail} />
@@ -80,7 +82,7 @@ export default function SessionsWidget({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <EmbedShell event={event} current="sessions" heading="Sessions">
+    <EmbedShell branding={branding} event={event} current="sessions" heading="Sessions">
       <EmbedSearch
         action={base}
         placeholder="Search by speaker or session title"

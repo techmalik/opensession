@@ -4,15 +4,21 @@ import type { Route } from "./+types/event.dashboard";
 import { getDb } from "../lib/db.server";
 import { requireOrganizer } from "../lib/session.server";
 import { daysUntil, formatDate, formatDateTime } from "../lib/format";
+import {
+  ORGANIZER_GETTING_STARTED,
+  organizerChecklist,
+  setFlag,
+  shouldShowCard,
+} from "../lib/onboarding.server";
 import { events, forms, sessions, statuses } from "../../database/schema";
-import { Card, EmptyState, PageHeader, StatusBadge, buttonPrimary, buttonSecondary } from "../components/ui";
+import { Card, EmptyState, GettingStarted, PageHeader, StatusBadge, buttonPrimary, buttonSecondary } from "../components/ui";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Dashboard" }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request);
+  const user = await requireOrganizer(request);
   const eventId = Number(params.eventId);
   const db = getDb();
 
@@ -69,11 +75,24 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const total = statusCounts.reduce((sum, row) => sum + row.count, 0);
 
-  return { event, statusCounts, recent, openForm, total, eventId };
+  // The checklist queries only run for someone who will actually see the card.
+  const showGettingStarted = await shouldShowCard(user, ORGANIZER_GETTING_STARTED);
+  const checklist = showGettingStarted ? await organizerChecklist(eventId) : [];
+
+  return { event, statusCounts, recent, openForm, total, eventId, showGettingStarted, checklist };
+}
+
+export async function action({ request }: Route.ActionArgs) {
+  const user = await requireOrganizer(request);
+  const form = await request.formData();
+  if (String(form.get("intent")) === "dismiss-getting-started") {
+    await setFlag(user.id, ORGANIZER_GETTING_STARTED);
+  }
+  return null;
 }
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
-  const { event, statusCounts, recent, openForm, total, eventId } = loaderData;
+  const { event, statusCounts, recent, openForm, total, eventId, showGettingStarted, checklist } = loaderData;
   const closesIn = daysUntil(openForm?.closesAt ?? null);
 
   return (
@@ -87,6 +106,15 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
           </Link>
         }
       />
+
+      {showGettingStarted ? (
+        <GettingStarted
+          title="Getting started"
+          description="Four steps from an empty event to a published program."
+          items={checklist}
+          intent="dismiss-getting-started"
+        />
+      ) : null}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 [&>*]:min-w-0">
         <Card className="p-4">
